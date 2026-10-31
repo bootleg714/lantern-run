@@ -2,7 +2,7 @@
 
 A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Run through four areas (Dusk Meadow, Frost Hollow, Ember Depths and Haunted Grove), stomp and blast a bestiary of critters, and reach the chest at the end.
 
-Every enemy, spell, status effect, death, pickup and weather overlay comes from [pixelfx](https://github.com/patch-gg/pixelfx). The ground, trees, props and backdrops come from free itch.io packs, recolored per area.
+Every enemy, spell, status effect, death, pickup and weather overlay comes from [pixelfx](https://github.com/patch-gg/pixelfx). The ground, trees, props and other backdrops come from free itch.io packs, recolored per area. The Haunted Grove backdrop is original AI-generated artwork.
 
 ## Play
 
@@ -56,4 +56,4 @@ python3 game/prep_art.py assets game/art.json
 
 - Effects: [pixelfx](https://github.com/patch-gg/pixelfx) by Patch, MIT. See `vendor/pixelfx/LICENSE` and `NOTICE.md`.
 - Tiles, trees, props and pine backdrops: [Legacy Fantasy: High Forest](https://anokolisa.itch.io/) by Anokolisa.
-- Haunted Grove backdrop: [Free Pixel Art Forest](https://edermunizz.itch.io/free-pixel-art-forest) by Eder Muniz. Credit required; the files may not be redistributed as assets, so keep this repository private or remove `game/art.json` before making it public.
+- Haunted Grove backdrop: AI-generated original artwork in `game/art/grove-original.png`.

@@ -727,7 +727,7 @@ const ART = AREAS.map((A, i) => {
     ground: IMG(d.ground), water: d.water ? IMG(d.water) : null,
     bushes: d.bushes.map(IMG), trees: { l: IMG(d.trees.l), m: IMG(d.trees.m) },
     par: { mountains: IMG(d.parallax.mountains), far: IMG(d.parallax.pines_far), near: IMG(d.parallax.pines_near) },
-    forest: d.forest ? { far: IMG(d.forest.far), mid: IMG(d.forest.mid), near: IMG(d.forest.near) } : null,
+    forest: d.forest ? IMG(d.forest.image) : null,
   };
 });
 const PLANK = IMG(DATA.plank);
@@ -782,7 +782,7 @@ function drawBackdrop(g, i, a, c, sy) {
   g.globalAlpha = a;
   g.drawImage(A.sky, 0, 0);
   if (A.forest) {
-    tileX(g, A.forest.far, c * 0.12, -60 + sy); tileX(g, A.forest.mid, c * 0.25, -60 + sy); tileX(g, A.forest.near, c * 0.42, -60 + sy);
+    tileX(g, A.forest, c * 0.25, -60 + sy);
   } else {
     tileX(g, A.par.mountains, c * 0.06, 44 + sy); tileX(g, A.par.far, c * 0.18, 60 + sy); tileX(g, A.par.near, c * 0.36, 84 + sy);
   }

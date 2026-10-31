@@ -8,7 +8,7 @@ from PIL import Image
 SRC = Path(sys.argv[1])
 OUT = Path(sys.argv[2])
 HF = SRC / "Legacy-Fantasy_-_High_Forest_2.0" / "Legacy-Fantasy - High Forest 2.3"
-FOREST = SRC / "Free_Pixel_Art_Forest" / "Free Pixel Art Forest" / "PNG" / "Background layers"
+GROVE = Path(__file__).resolve().parent / "art" / "grove-original.png"
 
 def load(p):
     return np.array(Image.open(p).convert("RGBA"))
@@ -158,24 +158,13 @@ SIL = {
 for name, cols in SIL.items():
     out["areas"][name]["parallax"] = {k: uri(recolor(v, {"rock": cols[k], "grass": cols[k]})) for k, v in layers.items()}
 
-# --- the Haunted Grove's painted forest, scaled to the game's 180px screen (about 0.3x)
-def forest(idx_list, scale=0.3):
-    canvas = None
-    for i in idx_list:
-        f = next(FOREST.glob(f"Layer_*_{i}.png"))
-        im = Image.open(f).convert("RGBA")
-        canvas = im if canvas is None else Image.alpha_composite(canvas, im)
-    w, h = canvas.size
-    return np.array(canvas.resize((round(w * scale), round(h * scale)), Image.LANCZOS))
-lights = sorted(FOREST.glob("Layer_*_Lights.png"))
-far = forest(["0", "1", "2"])
-mid = forest(["3", "4", "5"])
-near = forest(["6", "7", "8"])
-out["areas"]["grove"]["forest"] = {"far": uri(far), "mid": uri(mid), "near": uri(near), "w": int(far.shape[1]), "h": int(far.shape[0])}
+# --- original Haunted Grove backdrop, already sized for the game
+original_grove = load(GROVE)
+out["areas"]["grove"]["forest"] = {"image": uri(original_grove), "w": int(original_grove.shape[1]), "h": int(original_grove.shape[0])}
 
 out["credits"] = [
     "Tiles, props, trees: Legacy Fantasy High Forest by Anokolisa",
-    "Haunted Grove forest: Free Pixel Art Forest by Eder Muniz",
+    "Haunted Grove backdrop: original AI-generated artwork",
 ]
 OUT.write_text(json.dumps(out))
 print("wrote", OUT, round(OUT.stat().st_size / 1024), "KB")
