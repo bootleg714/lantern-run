@@ -1,0 +1,133 @@
+<title>Lantern Run</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one dusk-colored column, the game screen first, then controls and the field guide. Single dark look by choice (arcade screen). */
+:root {
+  --bg: #120c1c;
+  --panel: #1d1530;
+  --line: #3a2c52;
+  --fg: #ece4f4;
+  --muted: #a598b8;
+  --gold: #f5b92c;
+  --ember: #ff8a2a;
+  --frost: #86e0ff;
+  --zap: #ffe26b;
+  --font-display: "Silkscreen", "Courier New", monospace;
+  --font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+}
+.wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0; color: var(--gold); letter-spacing: 0.02em; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); font-size: 14px; }
+.screen { position: relative; border: 2px solid var(--line); background: #000; line-height: 0; }
+canvas#game { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; image-rendering: pixelated; image-rendering: crisp-edges; display: block; outline: none; }
+.banner, .tip { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; transition: opacity 0.6s; line-height: 1.3; text-shadow: 0 2px 0 #000, 0 0 8px #000; padding-inline: 12px; }
+.banner { top: 9%; font-family: var(--font-display); font-size: clamp(16px, 3.4vw, 30px); color: var(--gold); letter-spacing: 0.04em; }
+.tip { bottom: 7%; font-family: var(--font-display); font-size: clamp(10px, 1.6vw, 14px); color: var(--fg); }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 14px; }
+kbd { font-family: var(--font-display); font-size: 11px; background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; padding: 1px 6px; color: var(--fg); }
+button { font-family: var(--font-display); font-size: 12px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-bottom-width: 3px; padding: 7px 12px; cursor: pointer; }
+button:hover { border-color: var(--ember); }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.touch { display: none; gap: 10px; justify-content: space-between; user-select: none; -webkit-user-select: none; touch-action: none; }
+.touch div { display: flex; gap: 10px; }
+.touch button { font-size: 18px; width: 60px; height: 56px; padding: 0; touch-action: none; }
+.touch .act { color: var(--gold); font-size: 13px; width: 70px; }
+@media (pointer: coarse) { .touch { display: flex; } }
+.guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+section h2 { font-family: var(--font-display); font-weight: 400; font-size: 13px; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { font-family: var(--font-display); font-weight: 400; font-size: 11px; letter-spacing: 0.05em; color: var(--muted); text-align: left; padding: 0 10px 6px 0; border-bottom: 1px solid var(--line); }
+td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+td:first-child { color: var(--fg); font-weight: 700; white-space: nowrap; }
+td.where { color: var(--muted); white-space: nowrap; }
+.f { color: var(--ember); } .i { color: var(--frost); } .z { color: var(--zap); }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 14px; }
+.rules b { font-family: var(--font-display); font-weight: 400; font-size: 12px; letter-spacing: 0.04em; margin-right: 6px; }
+.note { color: var(--muted); font-size: 13px; margin: 10px 0 0; max-width: 70ch; }
+.note a { color: var(--fg); text-underline-offset: 2px; }
+.credits { margin-top: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Lantern Run</h1>
+    <p>Four areas, one small blue wizard, every effect from pixelfx</p>
+  </header>
+
+  <div class="screen">
+    <canvas id="game" width="320" height="180" tabindex="0" aria-label="Game screen"></canvas>
+    <div class="banner" id="banner"></div>
+    <div class="tip" id="tip"></div>
+  </div>
+
+  <div class="touch" id="touch">
+    <div><button id="tLeft" aria-label="Move left">&#9664;</button><button id="tRight" aria-label="Move right">&#9654;</button></div>
+    <div><button class="act" id="tSwap" aria-label="Switch spell">SWAP</button><button class="act" id="tCast" aria-label="Cast spell">CAST</button><button class="act" id="tJump" aria-label="Jump">JUMP</button></div>
+  </div>
+
+  <div class="bar">
+    <div class="keys">
+      <span><kbd>&larr;</kbd> <kbd>&rarr;</kbd> move</span>
+      <span><kbd>Space</kbd> <kbd>Z</kbd> jump</span>
+      <span><kbd>X</kbd> cast</span>
+      <span><kbd>Q</kbd> or <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> switch spell</span>
+      <span><kbd>R</kbd> restart</span>
+    </div>
+    <button id="restartBtn">Restart</button>
+  </div>
+
+  <div class="guide">
+    <section>
+      <h2>Field guide</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Creature</th><th>Where</th><th>How to beat it</th></tr></thead>
+          <tbody>
+            <tr><td>Slime</td><td class="where">Everywhere</td><td>Stomp or any spell. Frozen, it's a block you can stand on.</td></tr>
+            <tr><td>Snake</td><td class="where">Meadow, Ember</td><td>Long and quick. Jump it or stomp the body.</td></tr>
+            <tr><td>Frog</td><td class="where">Meadow, Frost</td><td>Stomp or any spell.</td></tr>
+            <tr><td>Bat</td><td class="where">Meadow, Ember</td><td>Stomp mid-flight or shoot it down.</td></tr>
+            <tr><td>Flying skull</td><td class="where">Frost, Ember</td><td>Made of fire, so <span class="f">fire</span> does nothing. Use <span class="i">ice</span> or <span class="z">zap</span>. Blue ones freeze you.</td></tr>
+            <tr><td>Ghost</td><td class="where">Grove</td><td>Can't be stomped and hexes you. <span class="f">Fire</span> or <span class="z">zap</span>.</td></tr>
+            <tr><td>Eyeball</td><td class="where">Grove</td><td>Fires hexing orbs. Stomp it or shoot it.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section>
+      <h2>Spells and status</h2>
+      <ul class="rules">
+        <li><b class="f">Fire</b>Burns most enemies away. 22 mana.</li>
+        <li><b class="i">Ice</b>Freezes an enemy for five seconds. Hit it again to shatter it. 26 mana.</li>
+        <li><b class="z">Zap</b>Chains through up to three nearby enemies. 34 mana.</li>
+        <li><b>Burning</b>From lava and orange skulls. Water puts it out.</li>
+        <li><b>Frozen</b>From icy pools and blue skulls. You move and jump slower.</li>
+        <li><b>Hexed</b>From ghosts and eye orbs. No spells for three seconds.</li>
+        <li><b>Haste</b>The green potion. Faster and higher.</li>
+        <li><b>Electrified</b>The storm globe. Invulnerable, free spells, touch to zap.</li>
+      </ul>
+    </section>
+  </div>
+  <p class="note">The hero is Biscuit, a blue hamster wizard drawn in code, chosen by the kids. Status effects and deaths wrap around his outline. Enemies, spells, status overlays, deaths, weather and pickups are pixelfx effects; areas reuse the same effects with different palettes. Skies are drawn in code.</p>
+  <p class="note credits">Art credits: tiles, trees, props and pine backdrops from <a href="https://anokolisa.itch.io/">Legacy Fantasy: High Forest by Anokolisa</a>, recolored per area. Haunted Grove backdrop from <a href="https://edermunizz.itch.io/free-pixel-art-forest">Free Pixel Art Forest by Eder Muniz</a>. Effects from <a href="https://github.com/patch-gg/pixelfx">pixelfx by Patch</a> (MIT).</p>
+</div>
+
+<script>window.LANTERN_ART = /*ART*/null;</script>
+<script>
+/*GAME*/
+</script>
