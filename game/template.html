@@ -38,6 +38,10 @@ canvas#game { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; image-renderin
 .tip { bottom: 7%; font-family: var(--font-display); font-size: clamp(10px, 1.6vw, 14px); color: var(--fg); }
 .bar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between; }
 .keys { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 14px; }
+.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pad { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.04em; color: var(--gold); border: 1px solid var(--gold); padding: 3px 8px; }
+.pad-keys { margin-top: -6px; }
+.pad-label { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.06em; color: var(--fg); }
 kbd { font-family: var(--font-display); font-size: 11px; background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; padding: 1px 6px; color: var(--fg); }
 button { font-family: var(--font-display); font-size: 12px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-bottom-width: 3px; padding: 7px 12px; cursor: pointer; }
 button:hover { border-color: var(--ember); }
@@ -88,7 +92,18 @@ td.where { color: var(--muted); white-space: nowrap; }
       <span><kbd>Q</kbd> or <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> switch spell</span>
       <span><kbd>R</kbd> restart</span>
     </div>
-    <button id="restartBtn">Restart</button>
+    <div class="actions">
+      <span class="pad" id="padStatus" hidden></span>
+      <button id="restartBtn">Restart</button>
+    </div>
+  </div>
+  <div class="keys pad-keys">
+    <span class="pad-label">Controller</span>
+    <span><kbd>Stick</kbd> or <kbd>D-pad</kbd> move</span>
+    <span><kbd>A</kbd> jump</span>
+    <span><kbd>X</kbd> or <kbd>B</kbd> cast</span>
+    <span><kbd>Y</kbd> or <kbd>RB</kbd> next spell, <kbd>LB</kbd> previous</span>
+    <span><kbd>Start</kbd> restart</span>
   </div>
 
   <div class="guide">
@@ -124,7 +139,7 @@ td.where { color: var(--muted); white-space: nowrap; }
     </section>
   </div>
   <p class="note">The hero is Biscuit, a blue hamster wizard drawn in code, chosen by the kids. Status effects and deaths wrap around his outline. Enemies, spells, status overlays, deaths, weather and pickups are pixelfx effects; areas reuse the same effects with different palettes. Skies are drawn in code.</p>
-  <p class="note credits">Art credits: tiles, trees, props and pine backdrops from <a href="https://anokolisa.itch.io/">Legacy Fantasy: High Forest by Anokolisa</a>, recolored per area. Haunted Grove backdrop from <a href="https://edermunizz.itch.io/free-pixel-art-forest">Free Pixel Art Forest by Eder Muniz</a>. Effects from <a href="https://github.com/patch-gg/pixelfx">pixelfx by Patch</a> (MIT).</p>
+  <p class="note credits">Art credits: tiles, trees, props and pine backdrops from <a href="https://anokolisa.itch.io/">Legacy Fantasy: High Forest by Anokolisa</a>, recolored per area. Haunted Grove backdrop: original artwork made for Lantern Run. Effects from <a href="https://github.com/patch-gg/pixelfx">pixelfx by Patch</a> (MIT).</p>
 </div>
 
 <script>window.LANTERN_ART = /*ART*/null;</script>

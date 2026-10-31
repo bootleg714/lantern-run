@@ -16,6 +16,17 @@ Open `index.html` in a browser. It is one self-contained file with no server nee
 | Q, or 1 / 2 / 3 | Switch spell: fire, ice, zap |
 | R | Restart |
 
+A controller works too: plug it in (or pair it) and press any button. Anything the browser reads as a standard gamepad works, including Xbox, PlayStation and Switch Pro controllers.
+
+| Controller | Action |
+| --- | --- |
+| Left stick or D-pad | Move |
+| A | Jump (hold for higher) |
+| X or B | Cast |
+| Y or RB | Next spell |
+| LB | Previous spell |
+| Start | Restart |
+
 ## Project layout
 
 ```
