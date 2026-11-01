@@ -3,6 +3,7 @@ import { createFrame, clearFrame, createFx, composite, painterFor, resolveOption
 import { drawHero, POSES, runPose, MAGE } from "./hero.js";
 import { renderHamster, POSES as HPOSES } from "./hamster.js";
 import { drawKnight, KNIGHT } from "./knight.js";
+import { renderWarrior, WARRIOR_POSES } from "./warrior.js";
 
 import * as coinSpin from "../../vendor/pixelfx/src/fx/pickups/coin-spin.js";
 import * as collectBurst from "../../vendor/pixelfx/src/fx/pickups/collect-burst.js";
@@ -45,14 +46,15 @@ const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: r
 // ---------------- hero kind: the rigged mage, or a hamster (window.LANTERN_HERO = "lantern" | "wizard" | "scout")
 const HERO_KIND = new URLSearchParams(window.location.search).get("hero") || window.LANTERN_HERO || "wizard";
 const IS_KNIGHT = HERO_KIND === "knight";
-const HAM = HERO_KIND === "mage" || IS_KNIGHT ? null : (["lantern", "wizard", "scout"].includes(HERO_KIND) ? HERO_KIND : "wizard");
-const HERO_H = HAM ? 20 : 34;
+const IS_WARRIOR = HERO_KIND === "warrior";
+const HAM = HERO_KIND === "mage" || IS_KNIGHT ? null : IS_WARRIOR ? "warrior" : (["lantern", "wizard", "scout"].includes(HERO_KIND) ? HERO_KIND : "wizard");
+const HERO_H = IS_WARRIOR ? 34 : HAM ? 20 : 34;
 const toU32 = (px) => { const out = new Uint32Array(px.length / 4); for (let i = 0; i < out.length; i++) out[i] = px[i * 4 + 3] ? ((px[i * 4 + 3] << 24) | (px[i * 4 + 2] << 16) | (px[i * 4 + 1] << 8) | px[i * 4]) >>> 0 : 0; return out; };
-const HFRAMES = HAM ? Object.fromEntries(Object.keys(HPOSES).map((k) => { const f = renderHamster(HAM, k); return [k, { ...f, c: toU32(f.px) }]; })) : null;
+const HFRAMES = HAM ? Object.fromEntries((IS_WARRIOR ? WARRIOR_POSES : Object.keys(HPOSES)).map((k) => { const f = IS_WARRIOR ? renderWarrior(k) : renderHamster(HAM, k); return [k, { ...f, c: toU32(f.px) }]; })) : null;
 const HAM_ACTOR = HAM ? (() => {
   const f = HFRAMES.idle, data = new Uint8Array(f.w * f.h);
   for (let i = 0; i < data.length; i++) data[i] = f.c[i] ? 1 : 0;
-  return { mask: { w: f.w, h: f.h, data }, pixels: f.c, x: -f.ox, y: -f.oy, w: f.w, h: f.h, k: 2, head: [3, -24], chest: [3, -10] };
+  return { mask: { w: f.w, h: f.h, data }, pixels: f.c, x: -f.ox, y: -f.oy, w: f.w, h: f.h, k: 2, head: IS_WARRIOR ? [0, -36] : [3, -24], chest: IS_WARRIOR ? [0, -22] : [3, -10] };
 })() : null;
 
 
@@ -268,7 +270,7 @@ function makeTorches() {
 function resetHero(x) {
   const hp = P ? P.hp : 4;
   P = { x: x - 6, y: surfaceAt(x) - HERO_H - 2, vx: 0, vy: 0, w: 12, h: HERO_H, face: 1, onGround: false, wasGround: false, coyote: 0, buffer: 0, inv: 1, run: 0,
-    hp, mana: 100, spell: 0, castT: 0, cool: 0, status: null, dead: null, frozen: false, onIce: false, hurtT: 0 };
+    hp, mana: 100, spell: 0, castT: 0, cool: 0, status: null, dead: null, frozen: false, onIce: false, hurtT: 0, attackT: 0, attackDuration: 0, attackKind: "", combo: 0, comboWindow: 0, attackQueued: false, attackHit: false, rollT: 0, rollCool: 0, dashT: 0, dashCool: 0 };
 }
 
 function newGame() {
@@ -287,12 +289,12 @@ function newGame() {
   resetHero(spawnX); P.hp = 4;
   cam = 0; score = 0; coinCount = 0; shake = 0; iris = null; quest = null; oneShots = []; dust = []; bolts = []; shots = []; projectiles = [];
   areaSeen = new Set([0]); weather = null; weatherArea = -1; winT = 0; state = "play"; time = 0;
-  say(AREAS[0].name, AREAS[0].tip, 5000);
+  say(AREAS[0].name, IS_WARRIOR ? "X COMBO. C HEAVY. SHIFT ROLL. F DASH. V CAST." : AREAS[0].tip, 5000);
 }
 
 // ---------------- input ----------------
 const keys = new Set();
-let jumpPressed = false, castPressed = false, swapPressed = false;
+let jumpPressed = false, castPressed = false, swapPressed = false, heavyPressed = false, rollPressed = false, dashPressed = false, magicPressed = false;
 const JUMP = ["Space", "KeyZ", "ArrowUp", "KeyW", "KeyK"], CAST = ["KeyX", "KeyJ"], SWAP = ["KeyQ", "KeyE", "KeyC"];
 const GAME_KEYS = new Set([...JUMP, ...CAST, "ArrowLeft", "ArrowRight", "ArrowDown", "KeyA", "KeyD"]);
 window.addEventListener("keydown", (e) => {
@@ -301,7 +303,11 @@ window.addEventListener("keydown", (e) => {
   if (!e.repeat) {
     if (JUMP.includes(e.code)) jumpPressed = true;
     if (CAST.includes(e.code)) castPressed = true;
-    if (SWAP.includes(e.code)) swapPressed = true;
+    if (SWAP.includes(e.code) && !(IS_WARRIOR && e.code === "KeyC")) swapPressed = true;
+    if (IS_WARRIOR && e.code === "KeyC") heavyPressed = true;
+    if (IS_WARRIOR && (e.code === "ShiftLeft" || e.code === "ShiftRight")) rollPressed = true;
+    if (IS_WARRIOR && e.code === "KeyF") dashPressed = true;
+    if (IS_WARRIOR && e.code === "KeyV") magicPressed = true;
     if (e.code === "Digit1") P.spell = 0;
     if (e.code === "Digit2") P.spell = 1;
     if (e.code === "Digit3") P.spell = 2;
@@ -319,6 +325,17 @@ const hold = (id, code, onPress) => {
   b.addEventListener("pointerdown", on); b.addEventListener("pointerup", off); b.addEventListener("pointerleave", off); b.addEventListener("pointercancel", off);
 };
 hold("tLeft", "ArrowLeft"); hold("tRight", "ArrowRight");
+if (IS_WARRIOR) {
+  document.getElementById("castHelp").hidden = true;
+  document.getElementById("warriorHelp").hidden = false;
+  for (const id of ["tHeavy", "tRoll", "tDash", "tMagic"]) document.getElementById(id).hidden = false;
+  document.getElementById("tCast").textContent = "ATTACK";
+  document.getElementById("tCast").setAttribute("aria-label", "Light attack");
+  hold("tHeavy", "KeyC", () => (heavyPressed = true));
+  hold("tRoll", "ShiftLeft", () => (rollPressed = true));
+  hold("tDash", "KeyF", () => (dashPressed = true));
+  hold("tMagic", "KeyV", () => (magicPressed = true));
+}
 hold("tJump", "Space", () => (jumpPressed = true)); hold("tCast", "KeyX", () => (castPressed = true)); hold("tSwap", "KeyQ", () => (swapPressed = true));
 document.getElementById("restartBtn").addEventListener("click", () => { newGame(); cv.focus(); });
 const down = (...c) => c.some((k) => keys.has(k));
@@ -351,7 +368,7 @@ function setStatus(kind) {
 const statusIs = (k) => P.status && P.status.kind === k;
 
 function hurt(cause, fromX, amount = 1) {
-  if (P.inv > 0 || P.dead || state !== "play" || statusIs("electrified")) return;
+  if (P.inv > 0 || (IS_WARRIOR && P.rollT > 0.08) || P.dead || state !== "play" || statusIs("electrified")) return;
   P.hp -= amount; P.inv = 1.3; P.hurtT = 0.3;
   P.vy = -230; P.vx = (P.x + 6 < fromX ? -1 : 1) * 150;
   spawn(hitSpark, { x: P.x + 6, y: P.y + Math.round(P.h * 0.53), flip: P.vx < 0 });
@@ -392,7 +409,7 @@ function cast() {
   if (!free && P.mana < sp.cost) { P.cool = 0.15; return; }
   if (!free) P.mana -= sp.cost;
   P.castT = 0.3; P.cool = 0.38;
-  const hx = P.x + 6 + P.face * (HAM ? 13 : 20), hy = P.y + Math.round(P.h * 0.47);
+  const hx = P.x + 6 + P.face * (IS_WARRIOR ? 20 : HAM ? 13 : 20), hy = P.y + Math.round(P.h * 0.47);
   if (sp.key === "zap") { zap(hx, hy); return; }
   // soft aim: the nearest enemy ahead, within a wide cone
   const speed = sp.key === "fire" ? 230 : 260;
@@ -560,9 +577,9 @@ function updateHero(dt) {
   const acc = P.onIce ? 380 : ACC, fric = P.onIce ? 140 : FRIC;
   const L = state === "play" && down("ArrowLeft", "KeyA"), R = state === "play" && down("ArrowRight", "KeyD");
   const dir = (R ? 1 : 0) - (L ? 1 : 0);
-  if (dir) { P.vx += dir * acc * dt * (Math.sign(P.vx) !== dir ? 1.6 : 1); P.face = dir; }
-  else { const s = Math.sign(P.vx), m = Math.max(0, Math.abs(P.vx) - fric * dt); P.vx = s * m; }
-  if (P.hurtT <= 0) P.vx = Math.max(-speed, Math.min(speed, P.vx));
+  if (dir && !(IS_WARRIOR && (P.rollT > 0 || P.dashT > 0))) { P.vx += dir * acc * dt * (Math.sign(P.vx) !== dir ? 1.6 : 1); P.face = dir; }
+  else if (!(IS_WARRIOR && (P.rollT > 0 || P.dashT > 0))) { const s = Math.sign(P.vx), m = Math.max(0, Math.abs(P.vx) - fric * dt); P.vx = s * m; }
+  if (P.hurtT <= 0 && !(IS_WARRIOR && (P.rollT > 0 || P.dashT > 0))) P.vx = Math.max(-speed, Math.min(speed, P.vx));
   P.hurtT -= dt;
 
   P.coyote = P.onGround ? 0.09 : P.coyote - dt;
@@ -571,6 +588,31 @@ function updateHero(dt) {
   if (!down(...JUMP) && P.vy < -140) P.vy = -140;
   P.vy = Math.min(480, P.vy + GRAV * dt);
 
+  if (IS_WARRIOR && state === "play") {
+    P.rollCool = Math.max(0, P.rollCool - dt); P.dashCool = Math.max(0, P.dashCool - dt);
+    P.rollT = Math.max(0, P.rollT - dt); P.dashT = Math.max(0, P.dashT - dt);
+    P.comboWindow = Math.max(0, P.comboWindow - dt);
+    if (rollPressed && P.onGround && !P.rollCool) { P.rollT = 0.38; P.rollCool = 0.65; P.dashT = 0; P.attackT = 0; P.attackQueued = false; P.vx = P.face * 205; }
+    if (dashPressed && !P.dashCool && !P.rollT) { P.dashT = 0.18; P.dashCool = 0.75; P.attackT = 0; P.attackQueued = false; P.vx = P.face * 265; }
+    if (!P.rollT && !P.dashT && P.hurtT <= 0) {
+      if (castPressed && P.attackT > 0 && P.attackKind !== "heavy") P.attackQueued = true;
+      if (heavyPressed && !P.attackT) { P.attackKind = "heavy"; P.attackDuration = P.attackT = 0.55; P.attackHit = false; P.combo = 0; }
+      else if ((castPressed || P.attackQueued) && (!P.attackT || (P.attackKind !== "heavy" && P.attackT < 0.13))) {
+        P.attackQueued = false;
+        P.combo = P.comboWindow > 0 ? P.combo % 3 + 1 : 1; P.comboWindow = 0.8;
+        P.attackKind = "attack" + P.combo; P.attackDuration = P.attackT = 0.3; P.attackHit = false;
+      }
+    }
+    if (P.attackT > 0) {
+      P.attackT = Math.max(0, P.attackT - dt);
+      const elapsed = P.attackDuration - P.attackT, heavy = P.attackKind === "heavy";
+      if (!P.attackHit && elapsed >= (heavy ? 0.30 : 0.11)) {
+        P.attackHit = true;
+        const reach = heavy ? 34 : 26, hb = [P.face > 0 ? P.x + P.w : P.x - reach, P.y + 3, reach, P.h - 4];
+        for (const e of enemies) if (e.alive && box(hb, enemyBox(e))) { const b = enemyBox(e); spawn(hitSpark, { x: e.x, y: b[1] + b[3] / 2, flip: P.face < 0 }); killEnemy(e, "slash"); }
+      }
+    }
+  }
   P.x += P.vx * dt;
   let hit = overlapsSolid(P.x, P.y, P.w, P.h);
   if (hit) {
@@ -598,7 +640,7 @@ function updateHero(dt) {
   P.mana = Math.min(100, P.mana + dt * 20);
 
   if (swapPressed) P.spell = (P.spell + 1) % SPELLS.length;
-  if (castPressed) cast();
+  if (IS_WARRIOR ? magicPressed : castPressed) cast();
 
   // hazards
   if (state === "play") {
@@ -661,7 +703,7 @@ function updateWorld(dt) {
 function update(dt) {
   time += dt;
   updateHero(dt);
-  jumpPressed = castPressed = swapPressed = false;
+  jumpPressed = castPressed = swapPressed = heavyPressed = rollPressed = dashPressed = magicPressed = false;
   updateEnemies(dt);
   heroVsEnemies();
   updateProjectiles(dt);
@@ -827,6 +869,12 @@ function hud(g) {
 
 // ---------------- hamster hero ----------------
 function hamsterPose() {
+  if (IS_WARRIOR) {
+    if (P.hurtT > 0) return "hurt";
+    if (P.rollT > 0) return P.rollT > 0.19 ? "roll0" : "roll1";
+    if (P.dashT > 0) return "dash";
+    if (P.attackT > 0) return P.attackKind;
+  }
   if (P.hurtT > 0) return "hurt";
   if (P.castT > 0) return "cast";
   if (!P.onGround) return P.vy < 0 ? "jump" : "fall";
@@ -846,6 +894,13 @@ function drawHamster(frame) {
     if (px >= 0 && py >= 0 && px < FW && py < FH) C[py * FW + px] = flash ? 0xffffffff : c;
   }
   if (st) st.draw(frame, "front");
+  if (IS_WARRIOR && P.attackT > 0 && P.attackDuration - P.attackT > (P.attackKind === "heavy" ? 0.28 : 0.09)) {
+    const radius = P.attackKind === "heavy" ? 28 : 22;
+    for (let j = 0; j <= 12; j++) {
+      const theta = -1.0 + j * 0.14, px = X0 + P.face * Math.round(Math.cos(theta) * radius), py = Y0 - 19 + Math.round(Math.sin(theta) * radius);
+      if (px >= 0 && py >= 0 && px < FW && py < FH) C[py * FW + px] = 0xffc5dce6;
+    }
+  }
   if (f.gem) {
     const col = parseInt(SPELLS[P.spell].color.slice(1), 16), r = (col >> 16) & 255, g = (col >> 8) & 255, b = col & 255;
     const gx = X0 + (flip ? f.ox - f.gem[0] - 1 : f.gem[0] - f.ox), gy = Y0 + f.gem[1] - f.oy, k0 = 0.55 + 0.2 * Math.sin(time * 6);

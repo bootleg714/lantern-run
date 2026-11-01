@@ -22,3 +22,9 @@
 - Added an optional knight based on the existing pixelfx rig, with idle, run, jump, fall, casting and hurt poses. Use the Knight and Biscuit links above the controls; switching reloads and restarts the run. Biscuit remains the default. The knight retains the existing magic spells and controls.
 - `game/src/knight.js` renders the knight and supplies its status/death actor. The rig uses the existing pixelfx license and notice. The knight uses the existing taller mage collision box. Check animation, spell origins, status/death effects, and tight platforms in play on target hardware.
 - The build passed and a headless browser preview showed the knight in its idle pose. Animation and gameplay behavior still need hands-on testing.
+
+## Warrior combat prototype
+
+- Added Warrior as a third selectable character in Lantern Run. `game/src/warrior.js` draws an original articulated, armored gothic warrior and pre-renders its pose frames at startup; it does not use the pixelfx character rig. The existing heroes remain selectable and Biscuit remains the default.
+- Warrior controls: X for a three-hit light combo (early follow-up inputs are buffered), C for a heavy attack, Shift for a roll with a brief enemy-damage evasion window, F for a dash, V to cast and Q to switch spells. Touch controls are provided. Roll and dash have short cooldowns. Melee currently defeats enemies in one hit, matching the existing demo's simple enemy health model.
+- The build and a headless browser check covered startup, all three combo steps, a melee hit, the heavy pose, roll and dash. Animation feel, all enemy types, status effects, accessibility and performance still need hands-on testing on target hardware. The warrior uses a 34-pixel collision box; level art and existing game progression are unchanged. This is a combat prototype, not a full gothic level or a finished Souls-style combat system.

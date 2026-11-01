@@ -51,6 +51,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .touch { display: none; gap: 10px; justify-content: space-between; user-select: none; -webkit-user-select: none; touch-action: none; }
 .touch div { display: flex; gap: 10px; }
 .touch button { font-size: 18px; width: 60px; height: 56px; padding: 0; touch-action: none; }
+.touch [hidden] { display: none; }
 .touch .act { color: var(--gold); font-size: 13px; width: 70px; }
 @media (pointer: coarse) { .touch { display: flex; } }
 .guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
@@ -72,7 +73,7 @@ td.where { color: var(--muted); white-space: nowrap; }
 <div class="wrap">
   <header>
     <h1>Lantern Run</h1>
-    <p>Four areas, two heroes, effects from pixelfx</p>
+    <p>Four areas, three heroes, effects from pixelfx</p>
   </header>
 
   <div class="screen">
@@ -83,20 +84,21 @@ td.where { color: var(--muted); white-space: nowrap; }
 
   <div class="touch" id="touch">
     <div><button id="tLeft" aria-label="Move left">&#9664;</button><button id="tRight" aria-label="Move right">&#9654;</button></div>
-    <div><button class="act" id="tSwap" aria-label="Switch spell">SWAP</button><button class="act" id="tCast" aria-label="Cast spell">CAST</button><button class="act" id="tJump" aria-label="Jump">JUMP</button></div>
+    <div><button class="act" id="tSwap" aria-label="Switch spell">SWAP</button><button class="act" id="tCast" aria-label="Cast spell">CAST</button><button class="act" id="tHeavy" aria-label="Heavy attack" hidden>HEAVY</button><button class="act" id="tRoll" aria-label="Dodge roll" hidden>ROLL</button><button class="act" id="tDash" aria-label="Dash" hidden>DASH</button><button class="act" id="tMagic" aria-label="Cast spell" hidden>MAGIC</button><button class="act" id="tJump" aria-label="Jump">JUMP</button></div>
   </div>
 
   <div class="bar">
     <div class="keys">
       <span><kbd>&larr;</kbd> <kbd>&rarr;</kbd> move</span>
       <span><kbd>Space</kbd> <kbd>Z</kbd> jump</span>
-      <span><kbd>X</kbd> cast</span>
+      <span id="castHelp"><kbd>X</kbd> cast</span>
+      <span id="warriorHelp" hidden><kbd>X</kbd> combo | <kbd>C</kbd> heavy | <kbd>Shift</kbd> roll | <kbd>F</kbd> dash | <kbd>V</kbd> cast</span>
       <span><kbd>Q</kbd> or <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> switch spell</span>
       <span><kbd>R</kbd> restart</span>
     </div>
     <div class="actions">
       <span class="pad" id="padStatus" hidden></span>
-      <a href="?hero=wizard">Biscuit</a> <a href="?hero=knight">Knight</a>
+      <a href="?hero=wizard">Biscuit</a> <a href="?hero=knight">Knight</a> <a href="?hero=warrior">Warrior</a>
       <button id="restartBtn">Restart</button>
     </div>
   </div>
