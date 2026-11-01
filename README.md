@@ -1,6 +1,6 @@
 # Lantern Run
 
-A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Stage 1 runs through Dusk Meadow, Bramble Hills and Duskwood Edge, with a mid boss and an end boss. Stage 2 carries on through Frost Hollow, Ember Depths and Haunted Grove with two more bosses. Stomp and blast a bestiary of critters and open the chest at the end of each stage.
+A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Stage 1 runs through Dusk Meadow, Bramble Hills and Duskwood Edge, with a mid boss and an end boss. Stage 2 crosses Frost Hollow, Glacier Pass and Crystal Lake, with two more. Stage 3 carries on through Ember Depths and Haunted Grove to the Hollow Eye. Stomp and blast a bestiary of critters and open the chest at the end of each stage.
 
 Every enemy, spell, status effect, death, pickup and weather overlay comes from [pixelfx](https://github.com/patch-gg/pixelfx). The ground, trees, props and other backdrops come from free itch.io packs, recolored per area. The Haunted Grove backdrop is original AI-generated artwork.
 
@@ -36,9 +36,10 @@ Controller (standard Xbox-style layout): move with the left stick or D-pad, jump
 | Stage | Sections | Mid boss | End boss |
 | --- | --- | --- | --- |
 | 1 | Dusk Meadow, Bramble Hills, Duskwood Edge | Old Croaker | Duskwing |
-| 2 | Frost Hollow, Ember Depths, Haunted Grove | King Gloop | The Hollow Eye |
+| 2 | Frost Hollow, Glacier Pass, Crystal Lake | King Gloop | Rimeskull |
+| 3 | Ember Depths, Haunted Grove | none yet | The Hollow Eye |
 
-Each section is 64 tiles. Opening the chest after the end boss clears the stage; press jump to go on to the next one, keeping your score and hearts. R (or Start) restarts the stage you're on. The Stage links under the game, or `?stage=2` in the address, start at a given stage. Stage 2 is meant to be split into a stage per area later.
+Each section is 64 tiles. Opening the chest after the end boss clears the stage; press jump to go on to the next one, keeping your score and hearts. R (or Start) restarts the stage you're on. The Stage links under the game, or `?stage=2` in the address, start at a given stage. Stage 3 is meant to be split into a stage per area later.
 
 ## Bosses
 
@@ -48,8 +49,9 @@ Walking into a boss arena seals it behind rune walls and shows the boss's health
 | --- | --- | --- | --- |
 | Old Croaker | Stage 1, end of Bramble Hills | Leaps at you and sends dust ripples along the ground when he lands; lashes his tongue when you're close; lobs arcs of spit. Calls two little frogs at half health. | Ice (double damage, and it slows him). |
 | Duskwing | Stage 1, end of Duskwood Edge, guarding the chest | Swoops down through your spot and up the other side; sends bats that chase you; lands to rest (stomp it then). At half health it also drops thorns on red ground markers. | Fire (double damage); ice stuns it. Stomp it from the two ledges. |
-| King Gloop | Stage 2, end of Frost Hollow | Hops at you; each landing sends frost lines racing along the floor (jump them). Every third hop is a big one. Splits off two slimes at half health. | Fire (double damage). Ice does nothing. |
-| The Hollow Eye | Stage 2, end of Haunted Grove, guarding the chest | Phase 1: aimed orb volleys and lightning strikes. Phase 2: orb spreads, double strikes and ghost summons. Phase 3: dives to the floor, sends root spikes out, then sits dizzy. | Zap (double damage); ice stuns it. Stomp it from the two ledges. |
+| King Gloop | Stage 2, end of Glacier Pass | Hops at you; each landing sends frost lines racing along the floor (jump them). Every third hop is a big one. Splits off two slimes at half health. | Fire (double damage). Ice does nothing. |
+| Rimeskull | Stage 2, end of Crystal Lake, guarding the chest | Fires aimed ice shards; drops icicles around you; rises over you, shudders above a red mark and slams down, sending frost spikes both ways, then sits stuck in the ice (stomp it then). At half health it also blows a blizzard that pushes you while icicles fall. | Fire (double damage). Ice does nothing; zap stuns it briefly. Stomp it from the two ledges. |
+| The Hollow Eye | Stage 3, end of Haunted Grove, guarding the chest | Phase 1: aimed orb volleys and lightning strikes. Phase 2: orb spreads, double strikes and ghost summons. Phase 3: dives to the floor, sends root spikes out, then sits dizzy. | Zap (double damage); ice stuns it. Stomp it from the two ledges. |
 
 Stomps do 2 damage, as does the warrior's heavy attack. Every boss is a pixelfx critter (frog, bat, slime, eyeball) drawn at about twice its size; their attacks use the ice-spikes, lightning-strike, spawn-portal, mana-burst, snowflake-burst, plasma-shot and plasma-explosion effects.
 

@@ -47,6 +47,7 @@ import * as lightningStrike from "../../vendor/pixelfx/src/fx/lightning/lightnin
 import * as plasmaExplosion from "../../vendor/pixelfx/src/fx/explosions/plasma-explosion.js";
 import * as manaBurst from "../../vendor/pixelfx/src/fx/arcane/mana-burst.js";
 import * as spawnPortal from "../../vendor/pixelfx/src/fx/spawn/spawn-portal.js";
+import * as icicleFall from "../../vendor/pixelfx/src/fx/ice/icicle-fall.js";
 import { rasterText, textWidth } from "../../vendor/pixelfx/src/core/font.js";
 
 const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, MAX_SEGS = 4;
@@ -113,15 +114,20 @@ const AREAS = [
 ];
 // ---------------- stages ----------------
 // A stage is a run of 64-tile segments. Each segment has an area theme (art, weather, enemy palettes) and a layout.
-// Stage 1 is all Dusk Meadow; Stage 2 holds the other three areas until they get stages of their own.
+// Stage 1 is all Dusk Meadow and Stage 2 all Frost Hollow; Stage 3 holds Ember Depths and Haunted Grove until they're split too.
 const STAGES = [
   { title: "Dusk Meadow", segs: [
     { theme: 0, layout: "meadow1", name: "Dusk Meadow", tip: "Stomp what you can. X casts, Q switches spells." },
     { theme: 0, layout: "meadow2", name: "Bramble Hills", tip: "Old Croaker waits at the bottom of the hills." },
     { theme: 0, layout: "meadow3", name: "Duskwood Edge", tip: "Something big is flapping in the dark ahead." },
   ] },
-  { title: "Frost Hollow to Haunted Grove", segs: [
-    { theme: 1, layout: "frost" }, { theme: 2, layout: "ember" }, { theme: 3, layout: "grove" },
+  { title: "Frost Hollow", segs: [
+    { theme: 1, layout: "frost1", name: "Frost Hollow", tip: "Ice is slippery. Fire melts frozen foes." },
+    { theme: 1, layout: "frost2", name: "Glacier Pass", tip: "King Gloop holds the far end of the pass." },
+    { theme: 1, layout: "frost3", name: "Crystal Lake", tip: "Something cold is watching from over the lake." },
+  ] },
+  { title: "Ember Depths to Haunted Grove", segs: [
+    { theme: 2, layout: "ember" }, { theme: 3, layout: "grove" },
   ] },
 ];
 let stageI = 0, SEGS = STAGES[0].segs, NA = SEGS.length, COLS = AW * NA, stageScore0 = 0, stageCoins0 = 0;
@@ -184,17 +190,39 @@ function buildLevel() {
       SPEC.arenas.push({ kind: "dusk", x0: (o + 40) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
       SPEC.chest = X(51);
     }
-    if (lay === "frost") {
+    if (lay === "frost1") {
       ground(0, 11); pool(12, 15); ground(16, 27); ground(20, 23, 7); plank(29, 30, 6); ground(32, 40); pool(41, 43); ground(44, 45);
-      plank(36, 39, 5); ground(49, 63);
+      plank(36, 39, 5); ground(49, 63); ground(55, 57, 7);
       SPEC.torches.push(X(5), X(18), X(34), X(51), X(61));
-      coinsRow(12, 15, 104); coinsRow(20, 23, 96); coinsRow(29, 30, 80); coinsRow(41, 43, 104);
+      coinsRow(12, 15, 104); coinsRow(20, 23, 96); coinsRow(29, 30, 80); coinsRow(41, 43, 104); coinsRow(55, 57, 96);
       en("slime", 8, { x0: 5, x1: 11 }); en("skull", 25, { hy: 84 }); en("frog", 33, { x0: 32, x1: 35 });
-      en("slime", 38, { x0: 32, x1: 40 }); en("skull", 47, { hy: 70 });
+      en("slime", 38, { x0: 32, x1: 40 }); en("skull", 47, { hy: 70 }); en("slime", 52, { x0: 49, x1: 54 }); en("snake", 60, { x0: 58, x1: 62 });
       SPEC.hearts.push([X(37), 80]);
-      // mini boss: King Gloop's arena fills the end of Frost Hollow, with a checkpoint just before it
+    }
+    if (lay === "frost2") {
+      // Glacier Pass: a plank over the first gap, a frozen pool, then King Gloop's arena with a checkpoint just before it
+      ground(0, 9); plank(11, 13, 7); ground(15, 22); ground(18, 20, 7); pool(23, 26); ground(27, 33); plank(34, 36, 6); ground(38, 45); ground(40, 41, 7);
+      ground(49, 63);
+      SPEC.torches.push(X(4), X(16), X(29), X(39), X(52), X(61));
+      coinsRow(11, 13, 96); coinsRow(18, 20, 96); coinsRow(23, 26, 104); coinsRow(34, 36, 80); coinsRow(40, 41, 96);
+      en("slime", 6, { x0: 2, x1: 9 }); en("skull", 14, { hy: 80 }); en("frog", 21, { x0: 21, x1: 22 }); en("snake", 30, { x0: 27, x1: 33 });
+      en("skull", 36, { hy: 66 }); en("slime", 44, { x0: 42, x1: 45 });
+      SPEC.potions.push([X(12), 80]); SPEC.hearts.push([X(41), 80]);
       SPEC.flags.push(X(44));
       SPEC.arenas.push({ kind: "gloop", x0: (o + 49) * T, x1: (o + 64) * T, floor: 9 * T });
+    }
+    if (lay === "frost3") {
+      // Crystal Lake: two frozen pools, then Rimeskull's arena with two ledges and the stage's chest
+      ground(0, 8); pool(9, 12); ground(13, 20); plank(22, 24, 6); ground(26, 31); ground(28, 29, 7); pool(32, 35); ground(36, 63); ground(38, 39, 7);
+      plank(46, 48, 6); plank(55, 57, 6);
+      for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
+      SPEC.torches.push(X(4), X(15), X(27), X(37), X(44), X(60));
+      coinsRow(9, 12, 104); coinsRow(15, 18, 128); coinsRow(22, 24, 80); coinsRow(28, 29, 96); coinsRow(32, 35, 104);
+      en("skull", 6, { hy: 76 }); en("slime", 18, { x0: 14, x1: 20 }); en("frog", 30, { x0: 30, x1: 31 }); en("skull", 34, { hy: 70 });
+      SPEC.potions.push([X(23), 80]); SPEC.hearts.push([X(38), 96]);
+      SPEC.flags.push(X(40));
+      SPEC.arenas.push({ kind: "rime", x0: (o + 42) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
+      SPEC.chest = X(52);
     }
     if (lay === "ember") {
       ground(0, 9); lava(10, 14); plank(12, 12, 6); ground(15, 24); ground(19, 21, 7); lava(25, 31); plank(27, 28, 7); plank(30, 30, 5);
@@ -690,8 +718,8 @@ function heroVsEnemies() {
 }
 
 // ---------------- bosses ----------------
-// Level 1 ends in two fights. King Gloop, a crowned frost slime, holds the end of Frost Hollow; the Hollow Eye guards
-// the chest at the end of Haunted Grove. Entering an arena seals it, shows the boss's health bar, and if the hero
+// Each stage has a mid boss and an end boss: Old Croaker and Duskwing in Dusk Meadow, King Gloop and Rimeskull in
+// Frost Hollow, and the Hollow Eye guarding the chest at the end of Haunted Grove. Entering an arena seals it, shows the boss's health bar, and if the hero
 // dies the arena reopens and the boss resets. Both are pixelfx critters drawn at twice their size.
 const BOSS_GRAV = 1100;
 const WHITE7 = ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"];
@@ -729,7 +757,7 @@ function resetArena(A) {
   A.locked = false;
   A.boss = BOSSES[A.kind].make(A);
   for (const e of enemies) if (e.minion) e.alive = false;
-  hazards = [];
+  hazards = []; windVX = 0;
 }
 
 function damageBoss(A, amount, how, px, py) {
@@ -825,7 +853,7 @@ function gloopDefeated(A) {
   score += 1500; shake = 0.5;
   hearts.push({ x: B.x, y: A.floor, b: bakeOf(heartPickup, {}, true) });
   for (let i = 0; i < 6; i++) { const x = B.x - 50 + i * 20; coins.push({ x, y: A.floor - 30 - Math.round(Math.sin((i / 5) * Math.PI) * 18), ph: i * 0.3, b: bakeOf(coinSpin, { seed: 1 + (i % 3) }, true) }); }
-  say("King Gloop melts!", "The way to Ember Depths is open.", 4000);
+  say("King Gloop melts!", "The way to Crystal Lake is open.", 4000);
 }
 const CROWN = ["..y....y....y..", ".yYy..yYy..yYy.", ".yYYyyYYYyyYYy.", ".yYYYYYYYYYYYy.", ".yRYYYYBYYYYRy.", ".yyyyyyyyyyyyy."];
 const CROWN_PAL = { y: 0xff0e5a8a, Y: 0xff4ac8f5, R: 0xff4a34e8, B: 0xfff4c862 };
@@ -1250,7 +1278,155 @@ function drawDusk(A) {
   }
 }
 
-// ---- the four bosses, by kind
+// ---- Rimeskull (Stage 2 end boss): a giant frost-flame skull that fires ice shards, drops icicles, slams the
+// ice and, when hurt, blows a blizzard across the lake
+const RIME_K = 2.2, RIME_BONE = ["#0e1a2e", "#22324a", "#3e5670", "#6a86a0", "#a0bcd0", "#d4e8f2", "#f6fcff"];
+const ICICLE_FREE = 0.64, ICICLE_HIT = ICICLE_FREE + Math.sqrt((2 * 44) / 950);
+let windVX = 0;
+function makeRime(A) {
+  return { kind: "rime", name: "Rimeskull", hp: 24, max: 24, x: A.x1 - 70, cy: A.floor - 230, homeY: A.floor - 86, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.4, seq: 0, queue: [], stunT: 0,
+    gustDir: 1, slamX: 0, vy: 0, deathT: 0, nextPop: 0 };
+}
+function updateRime(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.anim += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt; B.cy = Math.min(A.floor - 26, B.cy + dt * 70); shake = Math.max(shake, 0.1);
+    if (B.deathT > B.nextPop) { B.nextPop += 0.18; spawn(poof, { x: B.x + (Math.random() - 0.5) * 50, y: B.cy + 10, palette: ICE.slice(1) }); }
+    if (B.deathT > 1.6) rimeDefeated(A);
+    return;
+  }
+  B.phase = B.hp > B.max / 2 ? 1 : 2;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    spawn(snowflakeBurst, { x: B.x, y: B.cy + 30 });
+    say("", "Rimeskull howls! Walk into the blizzard and watch for icicles.", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  if (B.stunT > 0) { B.stunT -= dt; return; }
+  const mid = (A.x0 + A.x1) / 2;
+  switch (B.state) {
+    case "intro": {
+      const k = Math.min(1, B.t / 1.4);
+      B.cy = A.floor - 230 + (B.homeY - A.floor + 230) * (1 - (1 - k) ** 3);
+      B.x += (mid + 50 - B.x) * Math.min(1, dt * 2);
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.8) setB(B, "hover");
+      break;
+    }
+    case "hover":
+      B.dir = hx < B.x ? -1 : 1;
+      B.x += (clampN(hx + (B.x < hx ? -70 : 70), A.x0 + 40, A.x1 - 40) - B.x) * Math.min(1, dt * 0.9);
+      B.cy += (B.homeY + Math.sin(B.t * 1.8) * 8 - B.cy) * Math.min(1, dt * 3);
+      B.atk -= dt;
+      if (B.atk <= 0) rimeAttack(A);
+      break;
+    case "rise":
+      // float up over the hero, then shudder before the slam
+      B.x += (B.slamX - B.x) * Math.min(1, dt * 5);
+      B.cy += (A.floor - 104 - B.cy) * Math.min(1, dt * 5);
+      if (B.t > 0.55) setB(B, "shudder");
+      break;
+    case "shudder":
+      if (B.t > (B.phase > 1 ? 0.45 : 0.6)) { B.vy = 0; setB(B, "drop"); }
+      break;
+    case "drop":
+      B.vy += 1400 * dt; B.cy += B.vy * dt;
+      if (B.cy >= A.floor - 26) { B.cy = A.floor - 26; rimeSlam(A); setB(B, "stuck"); }
+      break;
+    case "stuck":
+      if (B.t > (B.phase > 1 ? 1.3 : 1.7)) setB(B, "lift");
+      break;
+    case "lift":
+      B.cy += (B.homeY - B.cy) * Math.min(1, dt * 2.5);
+      if (Math.abs(B.cy - B.homeY) < 3) { setB(B, "hover"); B.atk = 0.8; }
+      break;
+    case "gust": {
+      // blow from one wall toward the other; the wind pushes the hero while icicles fall
+      const wx = B.gustDir > 0 ? A.x0 + 36 : A.x1 - 36;
+      B.x += (wx - B.x) * Math.min(1, dt * 3); B.dir = B.gustDir;
+      B.cy += (A.floor - 70 - B.cy) * Math.min(1, dt * 3);
+      if (B.t > 0.5 && B.t < 3.1) windVX = B.gustDir * 62;
+      if (B.t > 0.5 && Math.random() < dt * 30) puff(B.x + B.gustDir * 30, B.cy + 20 + (Math.random() - 0.5) * 30, 1, 30, "#e8f4ff");
+      if (B.t > 3.3) { setB(B, "hover"); B.atk = 0.9; }
+      break;
+    }
+  }
+}
+function rimeAttack(A) {
+  const B = A.boss, ph = B.phase, q = (t, f) => B.queue.push({ t, f }), hx = () => P.x + 6;
+  const list = ph === 1 ? ["shards", "icicles", "slam"] : ["gust", "shards", "slam", "icicles", "shards", "slam"];
+  const atk = list[B.seq++ % list.length];
+  B.atk = ph === 1 ? 1.7 : 1.25;
+  if (atk === "slam") { B.slamX = clampN(hx(), A.x0 + 30, A.x1 - 30); setB(B, "rise"); }
+  else if (atk === "gust") {
+    B.gustDir = hx() < (A.x0 + A.x1) / 2 ? -1 : 1; setB(B, "gust");
+    say("", "A blizzard! Push against the wind.", 2000);
+    for (let i = 0; i < 6; i++) q(0.6 + i * 0.42, () => dropIcicle(A, i % 2 ? hx() : A.x0 + 24 + Math.random() * (A.x1 - A.x0 - 48)));
+  } else if (atk === "shards") {
+    const n = ph === 1 ? 3 : 5;
+    for (let i = 0; i < n; i++) q(0.25 + i * (ph === 1 ? 0.32 : 0.22), () => {
+      const sx = B.x, sy = B.cy + 12, dx = hx() - sx, dy = P.y + P.h / 2 - sy, d = Math.hypot(dx, dy) || 1, v = ph === 1 ? 150 : 175;
+      const ang = Math.atan2(dy, dx);
+      projectiles.push({ kind: "shot", cause: "ice", spark: SPARK_ICE, x: sx, y: sy, vx: (dx / d) * v, vy: (dy / d) * v, life: 3, fx: createFx(plasmaShot, { x: sx, y: sy, angle: ang, palette: SPARK_ICE }) });
+      B.flash = 0.05;
+    });
+  } else if (atk === "icicles") {
+    const n = ph === 1 ? 3 : 5;
+    for (let i = 0; i < n; i++) q(i * 0.22, () => dropIcicle(A, hx() + (i - (n - 1) / 2) * 38 + (Math.random() - 0.5) * 10));
+  }
+}
+function dropIcicle(A, x) {
+  x = clampN(x, A.x0 + 12, A.x1 - 12);
+  hazards.push({ kind: "icicle", x, floor: A.floor, t: 0, fx: createFx(icicleFall, { x, y: A.floor, seed: (Math.random() * 99) | 0 }) });
+}
+function rimeSlam(A) {
+  const B = A.boss, reach = B.phase > 1 ? 130 : 96;
+  shake = 0.4;
+  puff(B.x, A.floor, 14, 160, "#e8f4ff");
+  spawn(snowflakeBurst, { x: B.x, y: A.floor });
+  for (const dir of [-1, 1]) {
+    const ox = B.x + dir * 22;
+    hazards.push({ kind: "spikes", ox, dir, reach, floor: A.floor, t: 0, fx: createFx(iceSpikes, { x: ox, y: A.floor, flip: dir < 0, reach, height: 20, seed: (Math.random() * 99) | 0 }) });
+  }
+}
+function rimeDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = []; windVX = 0;
+  projectiles = projectiles.filter((p) => p.kind !== "shot");
+  spawn(snowflakeBurst, { x: B.x, y: A.floor });
+  spawn(manaBurst, { x: B.x, y: A.floor - 10, palette: SPARK_ICE });
+  revealChest(A, "+4500", 4500, "Rimeskull shatters!", `Open the chest to clear Stage ${stageI + 1}.`);
+}
+function drawRime(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const pal = B.flash > 0 ? { palette: WHITE7, bone: WHITE7 } : { palette: BLUE_FIRE, bone: RIME_BONE };
+  const b = bakeOf(skull, { seed: 3, hover: 0, floor: false, flip: B.dir < 0, ...pal });
+  const jx = B.state === "shudder" || B.stunT > 0 ? (Math.floor(time * 40) % 2 ? 1.5 : -1.5) : 0;
+  blitScaled(frame, b, B.anim, B.x + jx, B.cy, RIME_K, RIME_K, A.floor + 2);
+  const warn = B.state === "shudder" || B.state === "rise";
+  addGlow(B.x, B.cy, 34, warn ? [255, 80, 80] : B.stunT > 0 ? [255, 230, 110] : [90, 190, 255], warn ? 0.5 : 0.3);
+  if (warn) {
+    // a shadow on the ice where it will land
+    const k = Math.floor(time * 12) % 2 ? 0xff4a40ff : 0xff2a20b0;
+    for (let dx = -16; dx <= 16; dx++) { plot(B.slamX + dx, A.floor - 1, k); if (Math.abs(dx) < 11) plot(B.slamX + dx, A.floor - 2, k); }
+  }
+  if (B.state === "stuck") for (let i = 0; i < 3; i++) {
+    const a = time * 5 + (i * Math.PI * 2) / 3, sx = B.x + Math.cos(a) * 20, sy = B.cy - 34 + Math.sin(a) * 4;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) plot(sx + dx, sy + dy, 0xffffe0a0);
+  }
+  if (B.state === "gust" && B.t > 0.5) for (let i = 0; i < 28; i++) {
+    // wind streaks across the arena
+    const span = A.x1 - A.x0, u = ((i * 61.7 + B.t * 260) % span), x = B.gustDir > 0 ? A.x0 + u : A.x1 - u, y = A.floor - 8 - ((i * 37) % 130);
+    for (let d = 0; d < 7; d++) plot(x - B.gustDir * d, y, d < 3 ? 0xfffff0dd : 0xffd8b890);
+  }
+}
+
+// ---- the bosses, by kind
 const BOSSES = {
   gloop: { make: makeGloop, update: updateGloop, draw: drawGloop, cause: "ice", bar: ["#4fbcf5", "#c8f0ff"], wall: [90, 190, 255], mult: { fire: 2, ice: 0 },
     box: (B) => [B.x - 23 * B.sx, B.y - 32 * B.sy, 46 * B.sx, 32 * B.sy],
@@ -1267,6 +1443,10 @@ const BOSSES = {
     box: (B) => [B.x - 28, B.cy - 20, 56, 36],
     onHit: (B, how) => { if (how === "ice") B.stunT = 1.0; },
     intro: () => { say("Duskwing", "Fire hurts it most. Stomp it from the ledges or when it lands to rest.", 5000); } },
+  rime: { make: makeRime, update: updateRime, draw: drawRime, cause: "ice", bar: ["#4fbcf5", "#e6fbff"], wall: [120, 210, 255], mult: { fire: 2, ice: 0 },
+    box: (B) => [B.x - 24, B.cy - 26, 48, 52],
+    onHit: (B, how) => { if (how === "zap" && B.state === "hover") B.stunT = 0.7; },
+    intro: () => { say("Rimeskull", "Fire melts it. Stomp it while it's stuck in the ice.", 5000); shake = 0.3; } },
 };
 
 // ---- shared
@@ -1309,6 +1489,7 @@ function blitScaled(frame, b, t, x, y, kx, ky, clipY = Infinity) {
   return y + (top === Infinity ? dy0 : top);
 }
 function updateBosses(dt) {
+  windVX = 0;
   for (const A of arenas) {
     if (!A.locked && !A.cleared && state === "play" && !P.dead && P.x > A.x0 + 16 && P.x < A.x1) lockArena(A);
     // ordinary enemies stay outside a sealed arena; only the boss's own minions are inside
@@ -1326,6 +1507,10 @@ function updateBosses(dt) {
     if (h.kind === "ripple" && h.t < 0.5) {
       const front = h.ox + h.dir * h.reach * Math.min(1, h.t / 0.5);
       if (Math.abs(hcx - front) < 9 && feet > h.floor - 8) hurt("hit", front);
+    }
+    if (h.kind === "icicle" && h.t > ICICLE_FREE && h.t < ICICLE_HIT + 0.06) {
+      const tip = Math.min(h.floor, h.floor - 44 + 0.5 * 950 * (h.t - ICICLE_FREE) ** 2);
+      if (Math.abs(hcx - h.x) < 9 && P.y < tip && P.y + P.h > tip - 36) hurt("ice", h.x);
     }
     if (h.kind === "strike" && h.t > 0.76 && h.t < 1.12 && Math.abs(hcx - h.x) < 16) hurt("hit", h.x);
     if (h.fx.done()) hazards.splice(i, 1);
@@ -1438,11 +1623,12 @@ function updateHero(dt) {
       }
     }
   }
-  P.x += P.vx * dt;
+  const mvx = P.vx + (P.dead ? 0 : windVX);
+  P.x += mvx * dt;
   let hit = overlapsSolid(P.x, P.y, P.w, P.h);
   if (hit) {
-    if (hit.block) P.x = P.vx > 0 ? hit.block[0] - P.w : hit.block[0] + hit.block[2];
-    else P.x = P.vx > 0 ? hit.tx * T - P.w : (hit.tx + 1) * T;
+    if (hit.block) P.x = mvx > 0 ? hit.block[0] - P.w : hit.block[0] + hit.block[2];
+    else P.x = mvx > 0 ? hit.tx * T - P.w : (hit.tx + 1) * T;
     P.vx = 0;
   }
   const vyBefore = P.vy;
