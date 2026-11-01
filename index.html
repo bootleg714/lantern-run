@@ -43,6 +43,7 @@ canvas#game { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; image-renderin
 .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pad { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.04em; color: var(--gold); border: 1px solid var(--gold); padding: 3px 8px; }
 .pad-keys { margin-top: -6px; }
+.stage-pick { color: var(--muted); font-size: 14px; }
 .pad-label { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.06em; color: var(--fg); }
 kbd { font-family: var(--font-display); font-size: 11px; background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; padding: 1px 6px; color: var(--fg); }
 button { font-family: var(--font-display); font-size: 12px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-bottom-width: 3px; padding: 7px 12px; cursor: pointer; }
@@ -99,6 +100,7 @@ td.where { color: var(--muted); white-space: nowrap; }
     <div class="actions">
       <span class="pad" id="padStatus" hidden></span>
       <a href="?hero=wizard">Biscuit</a> <a href="?hero=knight">Knight</a> <a href="?hero=warrior">Warrior</a>
+      <span class="stage-pick">Stage <a data-stage="1" href="?stage=1">1</a> <a data-stage="2" href="?stage=2">2</a></span>
       <button id="restartBtn">Restart</button>
     </div>
   </div>
@@ -125,8 +127,10 @@ td.where { color: var(--muted); white-space: nowrap; }
             <tr><td>Flying skull</td><td class="where">Frost, Ember</td><td>Made of fire, so <span class="f">fire</span> does nothing. Use <span class="i">ice</span> or <span class="z">zap</span>. Blue ones freeze you.</td></tr>
             <tr><td>Ghost</td><td class="where">Grove</td><td>Can't be stomped and hexes you. <span class="f">Fire</span> or <span class="z">zap</span>.</td></tr>
             <tr><td>Eyeball</td><td class="where">Grove</td><td>Fires hexing orbs. Stomp it or shoot it.</td></tr>
-            <tr><td>King Gloop</td><td class="where">Frost boss</td><td>Mini boss. Fire does double, ice does nothing. Jump the frost lines when he lands; he splits at half health.</td></tr>
-            <tr><td>The Hollow Eye</td><td class="where">Grove boss</td><td>Final boss. Zap does double, ice stuns it. Dodge the lightning marks and stomp it from the ledges.</td></tr>
+            <tr><td>Old Croaker</td><td class="where">Stage 1 mid boss</td><td>Giant frog. Ice does double and slows him. Jump his tongue and dust ripples, dodge the spit, stomp his back.</td></tr>
+            <tr><td>Duskwing</td><td class="where">Stage 1 boss</td><td>Giant bat. Fire does double. Run from its swoops, stay off the red marks, stomp it from the ledges or when it lands.</td></tr>
+            <tr><td>King Gloop</td><td class="where">Stage 2 mid boss</td><td>Fire does double, ice does nothing. Jump the frost lines when he lands; he splits at half health.</td></tr>
+            <tr><td>The Hollow Eye</td><td class="where">Stage 2 boss</td><td>Zap does double, ice stuns it. Dodge the lightning marks and stomp it from the ledges.</td></tr>
           </tbody>
         </table>
       </div>
@@ -203,7 +207,7 @@ const manaBurst = __r(72);
 const spawnPortal = __r(74);
 const {rasterText, textWidth} = __r(8);
 
-const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, NA = 4, COLS = AW * NA;
+const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, MAX_SEGS = 4;
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 // ---------------- hero kind: the rigged mage, or a hamster (window.LANTERN_HERO = "lantern" | "wizard" | "scout")
 const HERO_KIND = new URLSearchParams(window.location.search).get("hero") || window.LANTERN_HERO || "wizard";
@@ -265,11 +269,28 @@ const AREAS = [
     pal: { slime: ["#0c0820", "#1f1450", "#3a2a8a", "#5a48c6", "#8a78ee", "#c2b6ff", "#f0ecff"] },
   },
 ];
+// ---------------- stages ----------------
+// A stage is a run of 64-tile segments. Each segment has an area theme (art, weather, enemy palettes) and a layout.
+// Stage 1 is all Dusk Meadow; Stage 2 holds the other three areas until they get stages of their own.
+const STAGES = [
+  { title: "Dusk Meadow", segs: [
+    { theme: 0, layout: "meadow1", name: "Dusk Meadow", tip: "Stomp what you can. X casts, Q switches spells." },
+    { theme: 0, layout: "meadow2", name: "Bramble Hills", tip: "Old Croaker waits at the bottom of the hills." },
+    { theme: 0, layout: "meadow3", name: "Duskwood Edge", tip: "Something big is flapping in the dark ahead." },
+  ] },
+  { title: "Frost Hollow to Haunted Grove", segs: [
+    { theme: 1, layout: "frost" }, { theme: 2, layout: "ember" }, { theme: 3, layout: "grove" },
+  ] },
+];
+let stageI = 0, SEGS = STAGES[0].segs, NA = SEGS.length, COLS = AW * NA, stageScore0 = 0, stageCoins0 = 0;
 const areaOfX = (px) => Math.max(0, Math.min(NA - 1, Math.floor(px / (AW * T))));
+const themeAt = (px) => SEGS[areaOfX(px)].theme;
+const segName = (i) => SEGS[i].name || AREAS[SEGS[i].theme].name;
+const segTip = (i) => SEGS[i].tip || AREAS[SEGS[i].theme].tip;
 
 // ---------------- level ----------------
 const E = 0, GR = 1, PL = 2, IC = 3, WA = 4, LV = 5;
-const grid = [...Array(ROWS)].map(() => new Uint8Array(COLS));
+const grid = [...Array(ROWS)].map(() => new Uint8Array(AW * MAX_SEGS));
 const SOLID = (t) => t === GR || t === PL || t === IC;
 const tileAt = (tx, ty) => (tx < 0 || tx >= COLS ? GR : ty < 0 || ty >= ROWS ? E : grid[ty][tx]);
 const solid = (tx, ty) => SOLID(tileAt(tx, ty));
@@ -279,16 +300,16 @@ function buildLevel() {
   for (const r of grid) r.fill(0);
   for (const k in SPEC) SPEC[k] = [];
   for (let a = 0; a < NA; a++) {
-    const o = a * AW, ice = !!AREAS[a].ice;
+    const th = SEGS[a].theme, lay = SEGS[a].layout, o = a * AW, ice = !!AREAS[th].ice;
     const X = (tx) => (o + tx) * T + 8;
     const ground = (x0, x1, top = 9) => { for (let x = x0; x <= x1; x++) for (let y = top; y < ROWS; y++) grid[y][o + x] = y === top && ice ? IC : GR; };
     const plank = (x0, x1, y) => { for (let x = x0; x <= x1; x++) grid[y][o + x] = PL; };
     const pool = (x0, x1) => { ground(x0, x1, 10); for (let x = x0; x <= x1; x++) { grid[9][o + x] = WA; grid[10][o + x] = GR; } };
     const lava = (x0, x1) => { for (let x = x0; x <= x1; x++) grid[10][o + x] = LV; };
     const coinsRow = (x0, x1, y) => { for (let x = x0; x <= x1; x++) SPEC.coins.push([X(x), y]); };
-    const en = (kind, tx, opts = {}) => SPEC.enemies.push({ kind, area: a, x: X(tx), ...opts, x0: opts.x0 != null ? X(opts.x0) : X(tx) - 40, x1: opts.x1 != null ? X(opts.x1) : X(tx) + 40 });
+    const en = (kind, tx, opts = {}) => SPEC.enemies.push({ kind, area: th, x: X(tx), ...opts, x0: opts.x0 != null ? X(opts.x0) : X(tx) - 40, x1: opts.x1 != null ? X(opts.x1) : X(tx) + 40 });
     SPEC.flags.push(X(2));
-    if (a === 0) {
+    if (lay === "meadow1") {
       ground(0, 13); ground(17, 29); ground(22, 25, 7); plank(31, 33, 6); ground(35, 49); plank(39, 42, 5); ground(53, 63);
       SPEC.torches.push(X(6), X(20), X(45), X(58));
       coinsRow(5, 9, 128); SPEC.coins.push([X(14), 112], [X(15), 100], [X(16), 112]);
@@ -297,7 +318,31 @@ function buildLevel() {
       en("slime", 37, { x0: 36, x1: 48 }); en("frog", 46, { x0: 44, x1: 48 }); en("snake", 59, { x0: 54, x1: 62 });
       SPEC.potions.push([X(41), 80]);
     }
-    if (a === 1) {
+    if (lay === "meadow2") {
+      // Bramble Hills: steps, a plank bridge and short pits, ending in Old Croaker's pond-side arena
+      ground(0, 10); ground(13, 21); ground(16, 18, 7); plank(23, 25, 6); ground(27, 34); ground(30, 31, 6); ground(36, 44); plank(38, 42, 5); ground(48, 63);
+      SPEC.torches.push(X(5), X(14), X(36), X(52), X(60));
+      coinsRow(3, 7, 128); coinsRow(16, 18, 96); coinsRow(23, 25, 80); coinsRow(30, 31, 80); coinsRow(38, 42, 64);
+      en("slime", 8, { x0: 3, x1: 10 }); en("frog", 17, { x0: 16, x1: 18 }); en("bat", 24, { by: 58, x0: 21, x1: 27 });
+      en("slime", 33, { x0: 32, x1: 34 }); en("snake", 40, { x0: 37, x1: 43 });
+      SPEC.potions.push([X(20), 144]); SPEC.hearts.push([X(41), 80]);
+      SPEC.flags.push(X(43));
+      SPEC.arenas.push({ kind: "croaker", x0: (o + 48) * T, x1: (o + 64) * T, floor: 9 * T });
+    }
+    if (lay === "meadow3") {
+      // Duskwood Edge: plank hops over wider pits, then Duskwing's arena with two ledges and the stage's chest
+      ground(0, 12); plank(14, 16, 6); ground(18, 26); ground(21, 23, 7); plank(28, 30, 6); ground(32, 63); ground(35, 36, 7);
+      plank(45, 47, 6); plank(55, 57, 6);
+      for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
+      SPEC.torches.push(X(4), X(19), X(33), X(42), X(60));
+      coinsRow(3, 8, 128); coinsRow(14, 16, 80); coinsRow(21, 23, 96); coinsRow(28, 30, 80);
+      en("bat", 8, { by: 60, x0: 4, x1: 11 }); en("slime", 19, { x0: 18, x1: 20 }); en("frog", 25, { x0: 24, x1: 26 }); en("bat", 29, { by: 56, x0: 27, x1: 31 }); en("snake", 33, { x0: 32, x1: 34 });
+      SPEC.hearts.push([X(36), 112]); SPEC.potions.push([X(22), 112]);
+      SPEC.flags.push(X(38));
+      SPEC.arenas.push({ kind: "dusk", x0: (o + 40) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
+      SPEC.chest = X(51);
+    }
+    if (lay === "frost") {
       ground(0, 11); pool(12, 15); ground(16, 27); ground(20, 23, 7); plank(29, 30, 6); ground(32, 40); pool(41, 43); ground(44, 45);
       plank(36, 39, 5); ground(49, 63);
       SPEC.torches.push(X(5), X(18), X(34), X(51), X(61));
@@ -309,7 +354,7 @@ function buildLevel() {
       SPEC.flags.push(X(44));
       SPEC.arenas.push({ kind: "gloop", x0: (o + 49) * T, x1: (o + 64) * T, floor: 9 * T });
     }
-    if (a === 2) {
+    if (lay === "ember") {
       ground(0, 9); lava(10, 14); plank(12, 12, 6); ground(15, 24); ground(19, 21, 7); lava(25, 31); plank(27, 28, 7); plank(30, 30, 5);
       ground(32, 44); lava(45, 49); plank(47, 47, 6); ground(50, 63);
       SPEC.torches.push(X(4), X(17), X(40), X(55));
@@ -318,7 +363,7 @@ function buildLevel() {
       en("frog", 42, { x0: 40, x1: 44 }); en("skull", 47, { hy: 64 }); en("slime", 57, { x0: 51, x1: 62 });
       SPEC.globes.push(X(35));
     }
-    if (a === 3) {
+    if (lay === "grove") {
       ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); plank(48, 50, 6); plank(56, 58, 6);
       for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
       SPEC.torches.push(X(4), X(18), X(37), X(46), X(61));
@@ -327,7 +372,7 @@ function buildLevel() {
       SPEC.hearts.push([X(21), 96], [X(41), 112]); SPEC.wisps.push(X(6));
       // final boss: the Hollow Eye guards the chest; the two ledges are for stomping it
       SPEC.flags.push(X(36));
-      SPEC.arenas.push({ kind: "eye", x0: (o + 44) * T, x1: (o + 63) * T, floor: 9 * T });
+      SPEC.arenas.push({ kind: "eye", x0: (o + 44) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
       SPEC.chest = X(53);
     }
   }
@@ -433,7 +478,7 @@ function freezeFx(e) {
 }
 
 function makeTorches() {
-  torches = SPEC.torches.map((x, i) => ({ x, y: surfaceAt(x) - 14, ph: i * 0.7, b: bakeOf(torch, { seed: 1 + (i % 2), ...(AREAS[areaOfX(x)].torch ? { palette: AREAS[areaOfX(x)].torch } : {}) }) }));
+  torches = SPEC.torches.map((x, i) => ({ x, y: surfaceAt(x) - 14, ph: i * 0.7, b: bakeOf(torch, { seed: 1 + (i % 2), ...(AREAS[themeAt(x)].torch ? { palette: AREAS[themeAt(x)].torch } : {}) }) }));
 }
 
 function resetHero(x) {
@@ -442,8 +487,9 @@ function resetHero(x) {
     hp, mana: 100, spell: 0, castT: 0, cool: 0, status: null, dead: null, frozen: false, onIce: false, hurtT: 0, attackT: 0, attackDuration: 0, attackKind: "", combo: 0, comboWindow: 0, attackQueued: false, attackHit: false, rollT: 0, rollCool: 0, dashT: 0, dashCool: 0 };
 }
 
-function newGame() {
-  buildLevel();
+function newGame(stage = stageI, keep = null) {
+  stageI = Math.max(0, Math.min(STAGES.length - 1, stage)); SEGS = STAGES[stageI].segs; NA = SEGS.length; COLS = AW * NA;
+  buildLevel(); buildDecor();
   P = null;
   coins = SPEC.coins.map(([x, y], i) => ({ x, y, ph: (i * 0.37) % 1.6, b: bakeOf(coinSpin, { seed: 1 + (i % 3) }, true) }));
   hearts = SPEC.hearts.map(([x, y]) => ({ x, y, b: bakeOf(heartPickup, {}, true) }));
@@ -456,10 +502,12 @@ function newGame() {
   arenas = SPEC.arenas.map(makeArena); hazards = [];
   flags = SPEC.flags.map((x, i) => ({ x, y: surfaceAt(x), hit: i === 0 }));
   spawnX = flags[0].x + 10;
-  resetHero(spawnX); P.hp = 4;
+  resetHero(spawnX); P.hp = keep ? Math.max(4, keep.hp) : 4;
   cam = 0; score = 0; coinCount = 0; shake = 0; iris = null; quest = null; oneShots = []; dust = []; bolts = []; shots = []; projectiles = [];
+  if (keep) { score = keep.score; coinCount = keep.coins; }
+  stageScore0 = score; stageCoins0 = coinCount;
   areaSeen = new Set([0]); weather = null; weatherArea = -1; winT = 0; state = "play"; time = 0;
-  say(AREAS[0].name, IS_WARRIOR ? "X COMBO. C HEAVY. SHIFT DODGE. F DASH. V CAST." : AREAS[0].tip, 5000);
+  say(`Stage ${stageI + 1}: ${STAGES[stageI].title}`, IS_WARRIOR ? "X COMBO. C HEAVY. SHIFT DODGE. F DASH. V CAST." : segTip(0), 5000);
 }
 
 // ---------------- input ----------------
@@ -481,7 +529,7 @@ window.addEventListener("keydown", (e) => {
     if (e.code === "Digit1") P.spell = 0;
     if (e.code === "Digit2") P.spell = 1;
     if (e.code === "Digit3") P.spell = 2;
-    if (e.code === "KeyR") newGame();
+    if (e.code === "KeyR") restartStage();
   }
   keys.add(e.code);
 });
@@ -507,7 +555,13 @@ if (IS_WARRIOR) {
   hold("tMagic", "KeyV", () => (magicPressed = true));
 }
 hold("tJump", "Space", () => (jumpPressed = true)); hold("tCast", "KeyX", () => (castPressed = true)); hold("tSwap", "KeyQ", () => (swapPressed = true));
-document.getElementById("restartBtn").addEventListener("click", () => { newGame(); cv.focus(); });
+for (const a of document.querySelectorAll("a[data-stage], a[href^='?hero=']")) {
+  const qs = new URLSearchParams(window.location.search);
+  if (a.dataset.stage) qs.set("stage", a.dataset.stage); else qs.set("hero", new URLSearchParams(a.getAttribute("href").slice(1)).get("hero"));
+  a.setAttribute("href", "?" + qs.toString());
+}
+document.getElementById("restartBtn").addEventListener("click", () => { restartStage(); cv.focus(); });
+function restartStage() { newGame(stageI, stageI ? { score: stageScore0, coins: stageCoins0, hp: 4 } : null); }
 const padState = { left: false, right: false, jump: false, previous: [], index: null };
 const padStatus = document.getElementById("padStatus");
 if (IS_WARRIOR) {
@@ -546,7 +600,7 @@ function pollGamepad() {
     if (pressed(3) || pressed(5)) swapPressed = true;
     if (pressed(4) && P) P.spell = (P.spell + SPELLS.length - 1) % SPELLS.length;
   }
-  if (pressed(9) && P) newGame();
+  if (pressed(9) && P) restartStage();
   padState.previous = buttons;
 }
 const down = (...c) => c.some((k) => keys.has(k)) || (padState.jump && c.some(k => JUMP.includes(k)));
@@ -674,17 +728,17 @@ function zap(hx, hy) {
 function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
-    p.life -= dt; p.x += p.vx * dt; if (p.vy) p.y += p.vy * dt;
+    p.life -= dt; if (p.g) p.vy += p.g * dt; p.x += p.vx * dt; if (p.vy) p.y += p.vy * dt;
     p.fx.update(dt); p.fx.options.x = p.x; p.fx.options.y = p.y;
     let gone = p.life <= 0;
     const tip = p.x + Math.sign(p.vx) * 4, tt = tileAt(Math.floor(tip / T), Math.floor(p.y / T));
     if (!gone && (p.kind === "shot" ? tt === GR || tt === IC : SOLID(tt))) {
       gone = true;
-      const pal = p.kind === "fire" ? undefined : p.kind === "ice" ? SPARK_ICE : ["#2a0a3a", "#5a1a7a", "#9a40c8", "#d080f0", "#f0c0ff", "#ffffff", "#ffffff"];
+      const pal = p.kind === "fire" ? undefined : p.kind === "ice" ? SPARK_ICE : p.spark || ["#2a0a3a", "#5a1a7a", "#9a40c8", "#d080f0", "#f0c0ff", "#ffffff", "#ffffff"];
       spawn(hitSpark, { x: tip, y: p.y + 6, flip: p.vx > 0, ...(pal ? { palette: pal } : {}) });
     }
     if (!gone && p.kind === "shot") {
-      if (box([p.x - 4, p.y - 4, 8, 8], heroBox())) { gone = true; hurt("curse", p.x); }
+      if (box([p.x - 4, p.y - 4, 8, 8], heroBox())) { gone = true; hurt(p.cause || "curse", p.x); }
     }
     if (!gone && p.kind !== "shot") {
       for (const e of enemies) {
@@ -733,6 +787,9 @@ function updateEnemies(dt) {
       e.x += e.dir * sp * dt;
       if (e.x < e.x0) { e.x = e.x0; e.dir = 1; }
       if (e.x > e.x1) { e.x = e.x1; e.dir = -1; }
+    } else if (e.kind === "bat" && e.homing) {
+      const dx = hcx - e.x, dy = hcy + 8 - e.y, d = Math.hypot(dx, dy) || 1;
+      e.x += (dx / d) * 50 * dt; e.y += (dy / d) * 40 * dt + Math.sin(e.t * 6) * 0.6; e.dir = dx < 0 ? -1 : 1;
     } else if (e.kind === "bat") {
       e.x += e.dir * 34 * dt;
       if (e.x < e.x0) { e.x = e.x0; e.dir = 1; }
@@ -812,11 +869,9 @@ function makeEye(A) {
     state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.2, seq: 0, queue: [], stunT: 0,
     shakeX: 0, tx: 0, deathT: 0, nextPop: 0, boom: false };
 }
-function makeArena(spec) { return { ...spec, locked: false, cleared: false, boss: spec.kind === "gloop" ? makeGloop(spec) : makeEye(spec) }; }
+function makeArena(spec) { return { ...spec, locked: false, cleared: false, boss: BOSSES[spec.kind].make(spec) }; }
 const setB = (B, s) => { B.state = s; B.t = 0; };
-const bossBox = (B) => B.kind === "gloop"
-  ? [B.x - 23 * B.sx, B.y - 32 * B.sy, 46 * B.sx, 32 * B.sy]
-  : [B.x - 22 + B.shakeX, B.cy - 22, 46, 44];
+const bossBox = (B) => BOSSES[B.kind].box(B);
 const bossHittable = (B) => !["wait", "intro", "dying", "dead"].includes(B.state);
 const lockedArena = () => arenas.find((A) => A.locked) || null;
 
@@ -826,17 +881,11 @@ function lockArena(A) {
   setB(B, "intro");
   // clear ordinary enemies out of the arena so it's a one-on-one fight
   for (const e of enemies) if (e.alive && e.x > A.x0 - 200 && e.x < A.x1 + 40) { e.alive = false; spawn(poof, { x: e.x, y: e.y, palette: SMOKE }); }
-  if (B.kind === "gloop") {
-    say("King Gloop", "Fire melts him. Jump over the frost lines when he lands.", 5000);
-    shake = 0.3;
-  } else {
-    spawn(spawnPortal, { x: B.x, y: A.floor });
-    say("The Hollow Eye", "Zap hits it hardest. Climb the ledges to stomp it.", 5000);
-  }
+  BOSSES[B.kind].intro(A);
 }
 function resetArena(A) {
   A.locked = false;
-  A.boss = A.kind === "gloop" ? makeGloop(A) : makeEye(A);
+  A.boss = BOSSES[A.kind].make(A);
   for (const e of enemies) if (e.minion) e.alive = false;
   hazards = [];
 }
@@ -845,10 +894,9 @@ function damageBoss(A, amount, how, px, py) {
   const B = A.boss;
   if (!bossHittable(B)) return false;
   let dmg = amount;
-  if (B.kind === "gloop" && how === "fire") dmg = amount * 2;
-  if (B.kind === "gloop" && how === "ice") dmg = 0;
-  if (B.kind === "eye" && how === "zap") dmg = amount * 2;
-  if (B.kind === "eye" && how === "ice") B.stunT = 1.1;
+  const def = BOSSES[B.kind], m = def.mult[how];
+  if (m !== undefined) dmg = amount * m;
+  if (def.onHit) def.onHit(B, how);
   spawn(hitSpark, { x: px, y: py, flip: px < B.x, ...(how === "ice" ? { palette: SPARK_ICE } : how === "zap" ? { palette: SPARK_ZAP } : {}) });
   if (dmg === 0) { spawn(damageNumber, { x: px, y: py - 10, text: "RESIST", palette: ICE }); return true; }
   B.hp = Math.max(0, B.hp - dmg); B.flash = 0.12;
@@ -1060,12 +1108,7 @@ function eyeDefeated(A) {
   const B = A.boss;
   setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
   for (const e of enemies) if (e.minion && e.alive) killEnemy(e, "zap");
-  spawn(manaBurst, { x: chest.x, y: chest.y - 6 });
-  spawn(collectBurst, { x: chest.x, y: chest.y - 4, palette: GOLD });
-  chest.hidden = false;
-  spawn(damageNumber, { x: B.x, y: B.cy - 30, text: "+5000", palette: GOLD });
-  score += 5000; shake = 0.5;
-  say("The Hollow Eye falls!", "Open the chest to finish Level 1.", 5000);
+  revealChest(A, "+5000", 5000, "The Hollow Eye falls!", `Open the chest to clear Stage ${stageI + 1}.`);
 }
 function drawEye(A) {
   const B = A.boss;
@@ -1083,6 +1126,306 @@ function drawEye(A) {
     for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) plot(sx + dx, sy + dy, 0xff6be2ff);
   }
 }
+
+// ---- Old Croaker (Stage 1 mid boss): a giant frog that leaps, lashes its tongue and lobs spit
+const CROAK_K = 2.4;
+const SPIT_PAL = ["#06140a", "#123a14", "#1f6a20", "#3aa030", "#7ad04a", "#c8f080", "#f0ffd0", "#ffffff"];
+const DUSK_PAL = ["#1a0612", "#3a0c26", "#6a1a40", "#a8305a", "#e05a7a", "#ffa0b0", "#ffe0e8", "#ffffff"];
+function makeCroaker(A) {
+  return { kind: "croaker", name: "Old Croaker", hp: 16, max: 16, x: (A.x0 + A.x1) / 2 + 50, y: A.floor, vx: 0, vy: 0, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, seq: 0, slowT: 0, tongue: 0, spat: false, deathT: 0 };
+}
+function croakerMouth(B) { return [B.x + B.dir * 28, B.y - 20]; }
+function updateCroaker(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.slowT = Math.max(0, B.slowT - dt);
+  const k = B.slowT > 0 ? 0.55 : 1, ds = dt * k;
+  B.t += ds; B.anim += ds; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  switch (B.state) {
+    case "wait": case "dead": return;
+    case "dying":
+      B.deathT += dt;
+      if (B.deathT > 1.3) croakerDefeated(A);
+      return;
+    case "intro":
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.4) setB(B, "idle");
+      break;
+    case "idle": {
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t < (B.phase > 1 ? 0.55 : 0.9)) break;
+      const near = Math.abs(hx - B.x) < 150 && Math.abs(P.y + P.h - B.y) < 30;
+      const next = ["leap", "tongue", "spit"][B.seq++ % 3];
+      setB(B, next === "tongue" && !near ? "crouch" : next === "tongue" ? "aim" : next === "leap" ? "crouch" : "spit");
+      B.spat = false;
+      break;
+    }
+    case "crouch":
+      if (B.t > 0.35) {
+        const vy = -470, air = (2 * -vy) / BOSS_GRAV, tx = clampN(hx, A.x0 + 34, A.x1 - 34);
+        B.vx = (tx - B.x) / air; B.vy = vy;
+        setB(B, "air");
+      }
+      break;
+    case "air":
+      B.vy += BOSS_GRAV * ds; B.x += B.vx * ds; B.y += B.vy * ds;
+      B.x = clampN(B.x, A.x0 + 30, A.x1 - 30);
+      if (B.vy > 0 && B.y >= A.floor) {
+        B.y = A.floor; setB(B, "land");
+        shake = 0.3; puff(B.x, A.floor, 14, 150);
+        // the thump throws a ripple of dust both ways along the ground
+        for (const dir of [-1, 1]) hazards.push({ kind: "ripple", ox: B.x + dir * 24, dir, reach: 90, floor: A.floor, t: 0, fx: rippleFx(B.x + dir * 24, A.floor, dir, 90) });
+      }
+      break;
+    case "land":
+      if (B.t > 0.5) setB(B, "idle");
+      break;
+    case "aim":
+      if (B.t > 0.45) setB(B, "lash");
+      break;
+    case "lash": {
+      const u = Math.min(1, B.t / 0.42);
+      B.tongue = 150 * Math.sin(Math.PI * u);
+      const [mx, my] = croakerMouth(B), tip = mx + B.dir * B.tongue;
+      if (box(heroBox(), [Math.min(mx, tip), my - 4, Math.abs(tip - mx), 8])) hurt("hit", tip);
+      if (B.t > 0.42) { B.tongue = 0; setB(B, "idle"); }
+      break;
+    }
+    case "spit":
+      if (!B.spat && B.t > 0.35) {
+        B.spat = true;
+        const n = B.phase > 1 ? 5 : 3, [mx, my] = croakerMouth(B);
+        for (let i = 0; i < n; i++) {
+          const tx = clampN(hx + (i - (n - 1) / 2) * 34, A.x0 + 10, A.x1 - 10), T = 0.85 + i * 0.06, g = 520;
+          const vx = (tx - mx) / T, vy = (A.floor - 6 - my) / T - 0.5 * g * T;
+          projectiles.push({ kind: "shot", cause: "hit", spark: SPIT_PAL, g, x: mx, y: my, vx, vy, life: 3, fx: createFx(plasmaShot, { x: mx, y: my, flip: vx < 0, palette: SPIT_PAL }) });
+        }
+      }
+      if (B.t > 0.75) setB(B, "idle");
+      break;
+  }
+  if (B.phase === 1 && B.hp <= B.max / 2 && B.state !== "air") {
+    B.phase = 2; B.flash = 0.3; shake = 0.3;
+    say("", "Old Croaker calls his tadpoles! Little frogs incoming.", 3000);
+    for (const dx of [-60, 60]) {
+      const x = clampN(B.x + dx, A.x0 + 24, A.x1 - 24), e = makeEnemy({ kind: "frog", area: 0, x, x0: A.x0 + 20, x1: A.x1 - 20 });
+      e.minion = true; enemies.push(e); spawn(poof, { x, y: A.floor, palette: SPIT_PAL.slice(1, 7) });
+    }
+  }
+}
+function rippleFx(x, floor, dir, reach) {
+  // a low wave of dust rolling along the ground
+  let t = 0;
+  return {
+    options: {}, update(dt) { t += dt; }, done: () => t > 0.6,
+    draw(fr) {
+      const front = x + dir * reach * Math.min(1, t / 0.5);
+      for (let i = 0; i < 18; i++) {
+        const px = front - dir * i * 2, h = Math.max(0, 7 - i * 0.4) * (1 - t / 0.6);
+        for (let y = 0; y < h; y++) plot(px, floor - y - 1, y > h - 2 ? 0xffd8cfe6 : 0xff8a7fa0);
+      }
+    },
+  };
+}
+function croakerDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  for (const e of enemies) if (e.minion && e.alive) killEnemy(e, "stomp");
+  for (const dx of [-20, 0, 20]) spawn(poof, { x: B.x + dx, y: A.floor - (dx ? 4 : 12), palette: SPIT_PAL.slice(1, 7) });
+  spawn(collectBurst, { x: B.x, y: A.floor - 10, palette: SPIT_PAL });
+  spawn(damageNumber, { x: B.x, y: A.floor - 52, text: "+1500", palette: GOLD });
+  score += 1500; shake = 0.5;
+  hearts.push({ x: B.x, y: A.floor, b: bakeOf(heartPickup, {}, true) });
+  for (let i = 0; i < 6; i++) { const x = B.x - 50 + i * 20; coins.push({ x, y: A.floor - 30 - Math.round(Math.sin((i / 5) * Math.PI) * 18), ph: i * 0.3, b: bakeOf(coinSpin, { seed: 1 + (i % 3) }, true) }); }
+  say("Old Croaker croaks!", "Onward to the Duskwood edge.", 4000);
+}
+function drawCroaker(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const t = B.state === "crouch" || B.state === "aim" ? 1.12 : B.state === "air" ? 1.25 : B.state === "spit" ? 0.2 + Math.min(0.3, B.t) : B.anim % 0.85;
+  const pal = B.flash > 0 ? { palette: WHITE7, belly: WHITE7 } : B.slowT > 0 ? { palette: ICE, belly: ICE } : {};
+  blitScaled(frame, bakeOf(frog, { seed: 3, flip: B.dir < 0, ...pal }), t, B.x, B.y, CROAK_K, CROAK_K);
+  if (B.state === "aim") addGlow(...croakerMouth(B), 14, [255, 90, 120], 0.5);
+  if (B.tongue > 1) {
+    const [mx, my] = croakerMouth(B), tip = mx + B.dir * B.tongue;
+    for (let x = 0; x <= B.tongue; x++) {
+      const px = mx + B.dir * x;
+      for (let y = -2; y <= 2; y++) plot(px, my + y, Math.abs(y) === 2 ? 0xff3a2a8a : 0xff7a60e8);
+    }
+    for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) if (x * x + y * y <= 16) plot(tip + x, my + y, x * x + y * y > 9 ? 0xff3a2a8a : 0xff9a88ff);
+  }
+}
+
+// ---- Duskwing (Stage 1 end boss): a giant bat that swoops, sends its swarm and rains thorn seeds
+const DUSK_K = 2.4;
+function makeDusk(A) {
+  return { kind: "dusk", name: "Duskwing", hp: 26, max: 26, x: A.x1 - 60, cy: A.floor - 210, homeY: A.floor - 100, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.4, seq: 0, queue: [], stunT: 0, path: null, deathT: 0, nextPop: 0 };
+}
+function updateDusk(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.anim += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt; B.cy = Math.min(A.floor - 18, B.cy + dt * 90); shake = Math.max(shake, 0.1);
+    if (B.deathT > B.nextPop) { B.nextPop += 0.2; spawn(poof, { x: B.x + (Math.random() - 0.5) * 50, y: B.cy + 10, palette: DUSK_PAL.slice(1, 7) }); }
+    if (B.deathT > 1.6) duskDefeated(A);
+    return;
+  }
+  B.phase = B.hp > B.max / 2 ? 1 : 2;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    spawn(manaBurst, { x: B.x, y: B.cy + 20, palette: DUSK_PAL });
+    say("", "Duskwing is furious! Watch the ground for falling thorns.", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  if (B.stunT > 0) { B.stunT -= dt; return; }
+  switch (B.state) {
+    case "intro": {
+      const k = Math.min(1, B.t / 1.4);
+      B.cy = A.floor - 210 + (B.homeY - A.floor + 210) * (1 - (1 - k) ** 3);
+      B.x += ((A.x0 + A.x1) / 2 + 40 - B.x) * Math.min(1, dt * 2);
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.8) setB(B, "hover");
+      break;
+    }
+    case "hover":
+      B.dir = hx < B.x ? -1 : 1;
+      B.x += (clampN(hx + (B.x < hx ? -50 : 50), A.x0 + 40, A.x1 - 40) - B.x) * Math.min(1, dt * 0.9);
+      B.cy += (B.homeY + Math.sin(B.t * 2.2) * 10 - B.cy) * Math.min(1, dt * 3);
+      B.atk -= dt;
+      if (B.atk <= 0) duskAttack(A);
+      break;
+    case "telegraph":
+      B.cy -= dt * 22;
+      if (B.t > 0.55) {
+        const sx = B.x, sy = B.cy, lx = clampN(hx, A.x0 + 30, A.x1 - 30), ex = clampN(2 * lx - sx, A.x0 + 40, A.x1 - 40);
+        B.path = { sx, sy, lx, ly: A.floor - Math.max(22, P.h - 4), ex, ey: B.homeY, d: B.phase > 1 ? 0.85 : 1.05 };
+        setB(B, "swoop");
+      }
+      break;
+    case "swoop": {
+      const p = B.path, u = Math.min(1, B.t / p.d);
+      // a U through the hero's spot and up the far side
+      const a = u < 0.5 ? u * 2 : (u - 0.5) * 2;
+      B.x = u < 0.5 ? p.sx + (p.lx - p.sx) * a : p.lx + (p.ex - p.lx) * a;
+      B.cy = u < 0.5 ? p.sy + (p.ly - p.sy) * Math.sin((a * Math.PI) / 2) : p.ly + (p.ey - p.ly) * (1 - Math.cos((a * Math.PI) / 2));
+      B.dir = p.ex > p.sx ? 1 : -1;
+      if (u >= 1) { setB(B, "hover"); B.atk = B.phase > 1 ? 0.9 : 1.3; }
+      break;
+    }
+    case "descend":
+      B.cy += (A.floor - 22 - B.cy) * Math.min(1, dt * 4);
+      if (B.t > 0.6) { setB(B, "rest"); shake = 0.2; puff(B.x, A.floor, 10, 120); }
+      break;
+    case "rest":
+      if (B.t > (B.phase > 1 ? 1.5 : 2)) setB(B, "rise");
+      break;
+    case "rise":
+      B.cy += (B.homeY - B.cy) * Math.min(1, dt * 2.5);
+      if (Math.abs(B.cy - B.homeY) < 3) { setB(B, "hover"); B.atk = 0.8; }
+      break;
+  }
+}
+function duskAttack(A) {
+  const B = A.boss, ph = B.phase, q = (t, f) => B.queue.push({ t, f });
+  const list = ph === 1 ? ["swoop", "swarm", "swoop", "rest"] : ["swoop", "drops", "swarm", "swoop", "drops", "rest"];
+  const atk = list[B.seq++ % list.length];
+  B.atk = ph === 1 ? 1.6 : 1.2;
+  if (atk === "swoop") setB(B, "telegraph");
+  else if (atk === "rest") setB(B, "descend");
+  else if (atk === "swarm") {
+    const alive = enemies.filter((e) => e.minion && e.alive).length, n = Math.min(ph + 1, 4 - alive);
+    for (let i = 0; i < n; i++) q(i * 0.3, () => {
+      const x = i % 2 ? A.x0 + 20 : A.x1 - 20, e = makeEnemy({ kind: "bat", area: 0, x, by: A.floor - 120, x0: A.x0 + 10, x1: A.x1 - 10 });
+      e.minion = true; e.homing = true; enemies.push(e);
+      spawn(poof, { x, y: A.floor - 110, palette: DUSK_PAL.slice(1, 7) });
+    });
+    say("", "Bats! Stomp or blast them.", 1800);
+  } else if (atk === "drops") {
+    for (let i = 0; i < 4; i++) {
+      const x = clampN(hx() + (i - 1.5) * 44 + (Math.random() - 0.5) * 12, A.x0 + 12, A.x1 - 12);
+      hazards.push({ kind: "marker", x, floor: A.floor, t: 0, fx: markerFx(x, A.floor, 0.9) });
+      q(0.3, () => projectiles.push({ kind: "shot", cause: "hit", spark: DUSK_PAL, g: 900, x, y: A.floor - 175, vx: 0, vy: 60, life: 2, fx: createFx(plasmaShot, { x, y: A.floor - 175, angle: Math.PI / 2, palette: DUSK_PAL }) }));
+    }
+  }
+  function hx() { return P.x + 6; }
+}
+function markerFx(x, floor, life) {
+  // a pulsing red mark on the ground where a thorn will fall
+  let t = 0;
+  return {
+    options: {}, update(dt) { t += dt; }, done: () => t > life,
+    draw() {
+      const k = Math.floor(t * 12) % 2 ? 0xff4a40ff : 0xff2a20b0;
+      for (let dx = -7; dx <= 7; dx++) { plot(x + dx, floor - 1, k); if (Math.abs(dx) < 5) plot(x + dx, floor - 2, k); }
+      addGlow(x, floor - 2, 10, [255, 60, 60], 0.35);
+    },
+  };
+}
+function duskDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  for (const e of enemies) if (e.minion && e.alive) killEnemy(e, "fire");
+  spawn(manaBurst, { x: B.x, y: A.floor - 10, palette: DUSK_PAL });
+  revealChest(A, "+4000", 4000, "Duskwing is driven off!", "Open the chest to clear Stage 1.");
+}
+function revealChest(A, label, pts, title, tip) {
+  spawn(manaBurst, { x: chest.x, y: chest.y - 6 });
+  spawn(collectBurst, { x: chest.x, y: chest.y - 4, palette: GOLD });
+  chest.hidden = false;
+  spawn(damageNumber, { x: chest.x, y: chest.y - 60, text: label, palette: GOLD });
+  score += pts; shake = 0.5;
+  say(title, tip, 5000);
+}
+const batCentroids = new WeakMap();
+function bakeCentroid(b, t) {
+  // where the bat's body is in this frame, so the boss stays put while the loop drifts it about
+  const f = bakedFrame(b, t);
+  let c = batCentroids.get(f);
+  if (!c) {
+    let sx = 0, sy = 0, n = 0;
+    for (let y = 0; y <= f.y1 - f.y0; y++) for (let x = 0; x <= f.x1 - f.x0; x++) if (f.color[y * f.cw + x] >>> 24 === 255) { sx += x; sy += y; n++; }
+    c = n ? [sx / n + f.x0 - b.ox, sy / n + f.y0 - b.oy] : [0, 0];
+    batCentroids.set(f, c);
+  }
+  return c;
+}
+function drawDusk(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const resting = B.state === "rest" || B.state === "descend";
+  const pal = B.flash > 0 ? { palette: WHITE7, eyes: WHITE7 } : B.stunT > 0 ? { palette: ICE, eyes: ICE } : {};
+  const b = bakeOf(bat, { seed: 4, flip: B.dir < 0, ...pal }), t = resting ? 1.8 : B.anim * (B.state === "swoop" ? 1.6 : 1);
+  const [cx, cy] = bakeCentroid(b, t);
+  blitScaled(frame, b, t, B.x - cx * DUSK_K, B.cy - cy * DUSK_K, DUSK_K, DUSK_K, A.floor + 2);
+  addGlow(B.x, B.cy, 30, B.state === "telegraph" ? [255, 60, 60] : [200, 70, 140], B.state === "telegraph" ? 0.55 : 0.25);
+  if (B.state === "rest") for (let i = 0; i < 3; i++) {
+    const a = time * 5 + (i * Math.PI * 2) / 3, sx = B.x + Math.cos(a) * 18, sy = B.cy - 26 + Math.sin(a) * 4;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) plot(sx + dx, sy + dy, 0xff6be2ff);
+  }
+}
+
+// ---- the four bosses, by kind
+const BOSSES = {
+  gloop: { make: makeGloop, update: updateGloop, draw: drawGloop, cause: "ice", bar: ["#4fbcf5", "#c8f0ff"], wall: [90, 190, 255], mult: { fire: 2, ice: 0 },
+    box: (B) => [B.x - 23 * B.sx, B.y - 32 * B.sy, 46 * B.sx, 32 * B.sy],
+    intro: () => { say("King Gloop", "Fire melts him. Jump over the frost lines when he lands.", 5000); shake = 0.3; } },
+  eye: { make: makeEye, update: updateEye, draw: drawEye, cause: "curse", bar: ["#b04ae0", "#f0c0ff"], wall: [150, 90, 255], mult: { zap: 2 },
+    box: (B) => [B.x - 22 + B.shakeX, B.cy - 22, 46, 44],
+    onHit: (B, how) => { if (how === "ice") B.stunT = 1.1; },
+    intro: (A) => { spawn(spawnPortal, { x: A.boss.x, y: A.floor }); say("The Hollow Eye", "Zap hits it hardest. Climb the ledges to stomp it.", 5000); } },
+  croaker: { make: makeCroaker, update: updateCroaker, draw: drawCroaker, cause: "hit", bar: ["#62b440", "#d8ffb0"], wall: [110, 220, 90], mult: { ice: 2 },
+    box: (B) => [B.x - 30, B.y - 42, 60, 42],
+    onHit: (B, how) => { if (how === "ice") B.slowT = 2.5; },
+    intro: () => { say("Old Croaker", "Ice slows him down. Jump his tongue and stomp his back.", 5000); shake = 0.25; } },
+  dusk: { make: makeDusk, update: updateDusk, draw: drawDusk, cause: "hit", bar: ["#c0507a", "#ffc0d8"], wall: [255, 130, 90], mult: { fire: 2 },
+    box: (B) => [B.x - 28, B.cy - 20, 56, 36],
+    onHit: (B, how) => { if (how === "ice") B.stunT = 1.0; },
+    intro: () => { say("Duskwing", "Fire hurts it most. Stomp it from the ledges or when it lands to rest.", 5000); } },
+};
 
 // ---- shared
 function plot(x, y, c) { const px = Math.round(x) - frame.ox, py = Math.round(y) - frame.oy; if (px >= 0 && py >= 0 && px < W && py < H) frame.color[py * W + px] = c; }
@@ -1128,7 +1471,7 @@ function updateBosses(dt) {
     if (!A.locked && !A.cleared && state === "play" && !P.dead && P.x > A.x0 + 16 && P.x < A.x1) lockArena(A);
     // ordinary enemies stay outside a sealed arena; only the boss's own minions are inside
     if (A.locked) for (const e of enemies) if (e.alive && !e.minion && e.x > A.x0 - 30 && e.x < A.x1 + 30) e.x = e.x < (A.x0 + A.x1) / 2 ? A.x0 - 30 : A.x1 + 30;
-    if (A.kind === "gloop") updateGloop(A, dt); else updateEye(A, dt);
+    BOSSES[A.kind].update(A, dt);
   }
   for (let i = hazards.length - 1; i >= 0; i--) {
     const h = hazards[i];
@@ -1137,6 +1480,10 @@ function updateBosses(dt) {
     if (h.kind === "spikes" && h.t > 0.04 && h.t < 0.52) {
       const u = Math.min(1, (h.t - 0.04) / 0.44), front = h.ox + h.dir * h.reach * (1 - Math.pow(1 - u, 1.7));
       if (Math.abs(hcx - front) < 11 && feet > h.floor - 16) hurt(h.fx.options.palette === ROOT_PAL ? "hit" : "ice", front);
+    }
+    if (h.kind === "ripple" && h.t < 0.5) {
+      const front = h.ox + h.dir * h.reach * Math.min(1, h.t / 0.5);
+      if (Math.abs(hcx - front) < 9 && feet > h.floor - 8) hurt("hit", front);
     }
     if (h.kind === "strike" && h.t > 0.76 && h.t < 1.12 && Math.abs(hcx - h.x) < 16) hurt("hit", h.x);
     if (h.fx.done()) hazards.splice(i, 1);
@@ -1160,16 +1507,16 @@ function heroVsBosses() {
       P.vy = down(...JUMP) ? -420 : -300; B.touchCool = 0.25;
       continue;
     }
-    hurt(B.kind === "gloop" ? "ice" : "curse", B.x);
+    hurt(BOSSES[B.kind].cause, B.x);
   }
 }
 function drawBosses() {
   for (const A of arenas) {
     if (A.x1 < cam - 80 || A.x0 > cam + W + 80) continue;
-    if (A.kind === "gloop") drawGloop(A); else drawEye(A);
+    BOSSES[A.kind].draw(A);
     if (A.locked) for (const wx of [A.x0 - 4, A.x1 + 2]) {
       // the sealed arena's rune walls: a shimmering column of light
-      const [cr, cg, cb] = A.kind === "gloop" ? [90, 190, 255] : [150, 90, 255];
+      const [cr, cg, cb] = BOSSES[A.kind].wall;
       for (let y = A.floor - 150; y < A.floor; y++) {
         const k = 0.45 + 0.35 * Math.sin(y * 0.35 - time * 9);
         for (let dx = -2; dx <= 2; dx++) {
@@ -1190,8 +1537,8 @@ function bossBar(g) {
   const x = 80, y = 168, w = 160, fill = Math.round((w - 2) * B.hp / B.max);
   g.fillStyle = "#000"; g.fillRect(x - 1, y - 1, w + 2, 7);
   g.fillStyle = "#2a1426"; g.fillRect(x, y, w, 5);
-  g.fillStyle = B.kind === "gloop" ? "#4fbcf5" : "#b04ae0"; g.fillRect(x + 1, y + 1, fill, 3);
-  g.fillStyle = B.kind === "gloop" ? "#c8f0ff" : "#f0c0ff"; g.fillRect(x + 1, y + 1, fill, 1);
+  g.fillStyle = BOSSES[B.kind].bar[0]; g.fillRect(x + 1, y + 1, fill, 3);
+  g.fillStyle = BOSSES[B.kind].bar[1]; g.fillRect(x + 1, y + 1, fill, 1);
   const name = B.name.toUpperCase(), tw = textWidth(name, "mini"), tx = Math.round(160 - tw / 2), ty = y - 8;
   rasterText(name, "mini", (gx, gy) => { g.fillStyle = "#000"; g.fillRect(tx + gx, ty + gy + 1, 1, 1); });
   rasterText(name, "mini", (gx, gy) => { g.fillStyle = "#ece4f4"; g.fillRect(tx + gx, ty + gy, 1, 1); });
@@ -1325,14 +1672,15 @@ function updateWorld(dt) {
   }
   if (!chest.opened && !chest.hidden && playing && box(hb, [chest.x - 14, chest.y - 18, 28, 18])) {
     chest.opened = true; state = "win"; winT = 0; score += 500;
-    say("Level 1 clear", "Press R or Restart to play again", 0);
+    const more = stageI + 1 < STAGES.length;
+    say(`Stage ${stageI + 1} clear`, more ? `Press jump to go on to Stage ${stageI + 2}` : "You beat every stage! Press R to play again", 0);
   }
   if (chest.opened) chest.fx.update(dt);
-  if (state === "win") { winT += dt; if (winT > 1.3 && !quest) quest = createFx(questComplete, { x: 0, y: 0, text: "LEVEL 1 CLEAR" }); }
+  if (state === "win") { winT += dt; if (winT > 1.3 && !quest) quest = createFx(questComplete, { x: 0, y: 0, text: `STAGE ${stageI + 1} CLEAR` }); }
   if (quest) { quest.update(dt); quest.options.x = Math.round(cam) + 160; quest.options.y = OY + 58; }
   // entering an area
   const a = areaOfX(P.x + 6);
-  if (!areaSeen.has(a)) { areaSeen.add(a); say(AREAS[a].name, AREAS[a].tip, 5500); }
+  if (!areaSeen.has(a)) { areaSeen.add(a); say(segName(a), segTip(a), 5500); }
 }
 
 // ---------------- update ----------------
@@ -1340,6 +1688,7 @@ function update(dt) {
   time += dt;
   pollGamepad();
   updateHero(dt);
+  if (state === "win" && winT > 2 && jumpPressed && stageI + 1 < STAGES.length) { newGame(stageI + 1, { score, coins: coinCount, hp: P.hp }); return; }
   jumpPressed = castPressed = swapPressed = heavyPressed = rollPressed = dashPressed = magicPressed = false;
   updateEnemies(dt);
   updateBosses(dt);
@@ -1371,7 +1720,7 @@ function update(dt) {
   shake = Math.max(0, shake - dt);
 
   // weather follows the area the camera is in
-  const wa = areaOfX(cam + 160);
+  const wa = themeAt(cam + 160);
   if (wa !== weatherArea) {
     if (weather) { weather.stop(); oldWeather = weather; }
     const [mod, opts] = AREAS[wa].weather;
@@ -1436,12 +1785,12 @@ function buildDecor() {
   const near = (x, list, d) => list.some((q) => Math.abs(q - x) < d);
   const flagsX = SPEC.flags, torchX = SPEC.torches;
   for (let a = 0; a < NA; a++) {
-    const art = ART[a], o = a * AW, props = AREA_PROPS[a];
+    const th = SEGS[a].theme, art = ART[th], o = a * AW, props = AREA_PROPS[th];
     for (let lx = 2; lx < AW - 2; lx++) {
       const tx = o + lx, ty = topRow(tx);
       if (ty < 0) continue;
       const surf = ty * T, cx = tx * T + 8;
-      const h1 = hash(tx, 1, a), h2 = hash(tx, 2, a), h3 = hash(tx, 3, a);
+      const h1 = hash(tx, 1, th), h2 = hash(tx, 2, th), h3 = hash(tx, 3, th);
       if (h1 < 0.13 && flat(tx, 2) && !near(cx, flagsX, 30)) {
         const im = art.trees[h2 < 0.55 ? "l" : "m"];
         DECOR.push({ k: "tree", im, x: Math.round(cx - im.width / 2), y: surf - im.height + 3 });
@@ -1451,7 +1800,7 @@ function buildDecor() {
         DECOR.push({ k: "bush", im, x: Math.round(cx - im.width / 2), y: surf - im.height + 4 });
       }
       if (props.length && h3 > 0.62 && flat(tx, 0)) {
-        const name = props[Math.floor(hash(tx, 4, a) * props.length)], im = PROPS[name];
+        const name = props[Math.floor(hash(tx, 4, th) * props.length)], im = PROPS[name];
         DECOR.push({ k: "prop", im, x: Math.round(cx - im.width / 2 + (hash(tx, 5) - 0.5) * 8), y: surf - im.height + 2, glow: name.startsWith("mushroom_glow") });
       }
     }
@@ -1584,7 +1933,7 @@ function render() {
   const sx = shake > 0 && !reduceMotion ? Math.round((Math.random() - 0.5) * 4) : 0;
   const sy = shake > 0 && !reduceMotion ? Math.round((Math.random() - 0.5) * 3) : 0;
   const c = Math.round(cam) + sx, g = sctx, cx = c + 160;
-  blendArea(g, (i, a) => drawBackdrop(g, i, a, c, sy), cx, sy);
+  blendArea(g, (i, a) => drawBackdrop(g, SEGS[i].theme, a, c, sy), cx, sy);
   // trees and bushes behind the ground's grass
   for (const d of DECOR) {
     if (d.k === "prop" || d.x > c + W || d.x + d.im.width < c) continue;
@@ -1597,7 +1946,7 @@ function render() {
   for (let ty = 0; ty < ROWS; ty++) for (let tx = c0; tx <= c1; tx++) {
     if (tx < 0 || tx >= COLS) continue;
     const v = grid[ty][tx]; if (!v) continue;
-    const art = ART[areaOfX(tx * T)], X = tx * T - c, Y = ty * T - OY + sy;
+    const art = ART[themeAt(tx * T)], X = tx * T - c, Y = ty * T - OY + sy;
     if (v === LV) { lavaTiles.push([tx, ty]); continue; }
     if (v === WA) { waters.push([art, tx, X, Y]); continue; }
     if (v === PL) {
@@ -1738,7 +2087,7 @@ function drawBolts() {
 
 // ---------------- loop ----------------
 let last = performance.now(), fpsAcc = 0, fpsN = 0;
-window.__lantern = { get P() { return P; }, get enemies() { return enemies; }, teleport(x, y) { P.x = x; P.y = y != null ? y : Math.min(surfaceAt(x + 6), 144) - 40; P.vy = 0; cam = Math.max(0, x - 150); }, setStatus(k) { setStatus(k); }, perf: { ms: 0 }, get state() { return state; }, get projectiles() { return projectiles; }, kill(n) { P.hp = n; }, face(d) { P.face = d; }, get cam() { return cam; }, get arenas() { return arenas; }, get hazards() { return hazards; }, get chest() { return chest; }, hitBoss(i, n, how) { return damageBoss(arenas[i], n, how || "slash", arenas[i].boss.x, arenas[i].boss.y || arenas[i].boss.cy); } };
+window.__lantern = { get P() { return P; }, get enemies() { return enemies; }, teleport(x, y) { P.x = x; P.y = y != null ? y : Math.min(surfaceAt(x + 6), 144) - 40; P.vy = 0; cam = Math.max(0, x - 150); }, setStatus(k) { setStatus(k); }, perf: { ms: 0 }, get state() { return state; }, get projectiles() { return projectiles; }, kill(n) { P.hp = n; }, face(d) { P.face = d; }, get cam() { return cam; }, get arenas() { return arenas; }, get hazards() { return hazards; }, get chest() { return chest; }, get stage() { return stageI; }, newGame(i) { newGame(i); }, hitBoss(i, n, how) { return damageBoss(arenas[i], n, how || "slash", arenas[i].boss.x, arenas[i].boss.y || arenas[i].boss.cy); } };
 function loop(now) {
   const dt = Math.max(0, Math.min(1 / 30, (now - last) / 1000)); last = now;
   const t0 = performance.now();
@@ -1753,7 +2102,8 @@ const warriorAtlasReady = IS_WARRIOR ? loadWarriorAtlas(window.LANTERN_WARRIOR_A
   HAM_ACTOR = makeHamActor(sheets.Idle[0]);
 }).catch(err => { console.error("Warrior sprite atlas could not be loaded; using original warrior.", err); }) : Promise.resolve();
 Promise.all([artReady, warriorAtlasReady]).then(() => {
-  buildLevel(); buildDecor(); newGame();
+  const qs = new URLSearchParams(window.location.search);
+  newGame((parseInt(qs.get("stage"), 10) || 1) - 1);
   last = performance.now();
   requestAnimationFrame(loop);
 });

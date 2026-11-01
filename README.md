@@ -1,6 +1,6 @@
 # Lantern Run
 
-A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Run through Level 1's four areas (Dusk Meadow, Frost Hollow, Ember Depths and Haunted Grove), stomp and blast a bestiary of critters, beat the mini boss at the end of Frost Hollow and the final boss guarding the chest.
+A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Stage 1 runs through Dusk Meadow, Bramble Hills and Duskwood Edge, with a mid boss and an end boss. Stage 2 carries on through Frost Hollow, Ember Depths and Haunted Grove with two more bosses. Stomp and blast a bestiary of critters and open the chest at the end of each stage.
 
 Every enemy, spell, status effect, death, pickup and weather overlay comes from [pixelfx](https://github.com/patch-gg/pixelfx). The ground, trees, props and other backdrops come from free itch.io packs, recolored per area. The Haunted Grove backdrop is original AI-generated artwork.
 
@@ -31,16 +31,27 @@ A controller works too: plug it in (or pair it) and press any button. Anything t
 
 Controller (standard Xbox-style layout): move with the left stick or D-pad, jump with A, and restart with Start. For Biscuit or the knight, X or B casts, Y or RB selects the next spell, and LB selects the previous spell. For the warrior, X attacks, Y uses a heavy attack, B dodges, RB dashes, RT casts, and LB switches spells. Press a controller button while the game tab is focused to connect.
 
+## Stages
+
+| Stage | Sections | Mid boss | End boss |
+| --- | --- | --- | --- |
+| 1 | Dusk Meadow, Bramble Hills, Duskwood Edge | Old Croaker | Duskwing |
+| 2 | Frost Hollow, Ember Depths, Haunted Grove | King Gloop | The Hollow Eye |
+
+Each section is 64 tiles. Opening the chest after the end boss clears the stage; press jump to go on to the next one, keeping your score and hearts. R (or Start) restarts the stage you're on. The Stage links under the game, or `?stage=2` in the address, start at a given stage. Stage 2 is meant to be split into a stage per area later.
+
 ## Bosses
 
-Level 1 has two boss fights. Walking into a boss arena seals it behind rune walls and shows the boss's health bar; there is a checkpoint flag just before each one, and if the hero dies the boss resets.
+Walking into a boss arena seals it behind rune walls and shows the boss's health bar; there is a checkpoint flag just before each one, and if the hero dies the boss resets.
 
 | Boss | Where | Attacks | Weak to |
 | --- | --- | --- | --- |
-| King Gloop | End of Frost Hollow | Hops at you; each landing sends frost lines racing along the floor (jump them). Every third hop is a big one. Splits off two slimes at half health. | Fire (double damage). Ice does nothing. |
-| The Hollow Eye | End of Haunted Grove, guarding the chest | Phase 1: aimed orb volleys and lightning strikes. Phase 2: orb spreads, double strikes and ghost summons. Phase 3: dives to the floor, sends root spikes out, then sits dizzy. | Zap (double damage); ice stuns it. Stomp it from the two ledges. |
+| Old Croaker | Stage 1, end of Bramble Hills | Leaps at you and sends dust ripples along the ground when he lands; lashes his tongue when you're close; lobs arcs of spit. Calls two little frogs at half health. | Ice (double damage, and it slows him). |
+| Duskwing | Stage 1, end of Duskwood Edge, guarding the chest | Swoops down through your spot and up the other side; sends bats that chase you; lands to rest (stomp it then). At half health it also drops thorns on red ground markers. | Fire (double damage); ice stuns it. Stomp it from the two ledges. |
+| King Gloop | Stage 2, end of Frost Hollow | Hops at you; each landing sends frost lines racing along the floor (jump them). Every third hop is a big one. Splits off two slimes at half health. | Fire (double damage). Ice does nothing. |
+| The Hollow Eye | Stage 2, end of Haunted Grove, guarding the chest | Phase 1: aimed orb volleys and lightning strikes. Phase 2: orb spreads, double strikes and ghost summons. Phase 3: dives to the floor, sends root spikes out, then sits dizzy. | Zap (double damage); ice stuns it. Stomp it from the two ledges. |
 
-Stomps do 2 damage, as does the warrior's heavy attack. Both bosses are pixelfx critters (the slime and the eyeball) drawn at twice their size; their attacks use the ice-spikes, lightning-strike, spawn-portal, mana-burst, snowflake-burst and plasma-explosion effects.
+Stomps do 2 damage, as does the warrior's heavy attack. Every boss is a pixelfx critter (frog, bat, slime, eyeball) drawn at about twice its size; their attacks use the ice-spikes, lightning-strike, spawn-portal, mana-burst, snowflake-burst, plasma-shot and plasma-explosion effects.
 
 ## Project layout
 
