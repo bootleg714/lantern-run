@@ -23,16 +23,23 @@
 - `game/src/knight.js` renders the knight and supplies its status/death actor. The rig uses the existing pixelfx license and notice. The knight uses the existing taller mage collision box. Check animation, spell origins, status/death effects, and tight platforms in play on target hardware.
 - The build passed and a headless browser preview showed the knight in its idle pose. Animation and gameplay behavior still need hands-on testing.
 
-## Warrior combat prototype
+## Warrior combat prototype (superseded artwork)
 
 - Added Warrior as a third selectable character in Lantern Run. `game/src/warrior.js` draws an original articulated, armored gothic warrior and pre-renders its pose frames at startup; it does not use the pixelfx character rig. The existing heroes remain selectable and Biscuit remains the default.
 - Warrior controls: X for a three-hit light combo (early follow-up inputs are buffered), C for a heavy attack, Shift for a roll with a brief enemy-damage evasion window, F for a dash, V to cast and Q to switch spells. Touch controls are provided. Roll and dash have short cooldowns. Melee currently defeats enemies in one hit, matching the existing demo's simple enemy health model.
 - The build and a headless browser check covered startup, all three combo steps, a melee hit, the heavy pose, roll and dash. Animation feel, all enemy types, status effects, accessibility and performance still need hands-on testing on target hardware. The warrior uses a 34-pixel collision box; level art and existing game progression are unchanged. This is a combat prototype, not a full gothic level or a finished Souls-style combat system.
 
-## Fantasy Knight sprite integration
+## Previous Fantasy Knight integration (superseded)
 
 - Replaced the Warrior's visible artwork with the supplied Fantasy Knight sprites by aamatniekss, using the darker outlined variant. Idle, run, jump, fall, light and heavy slashes, roll, dash, hurt, and death use sprite-sheet frames. Existing combat mechanics, controls, and collision box remain in place. The original procedural warrior remains as a fallback if the sheets fail to load.
 - Original selected sheets are in `game/art/free-knight/`. `game/build.mjs` embeds them into the self-contained `index.html`; `game/src/free-knight.js` slices frames after loading, preserving a shared feet anchor. The warrior's collision and hitboxes are unchanged, so check the larger sword visuals against actual reach. No visual edits have been made to the supplied artwork yet.
 - Creator and license: https://aamatniekss.itch.io/fantasy-knight-free-pixelart-animated-character . The creator permits use in free/commercial games and modification, prohibits redistribution of the assets on their own, and says the assets cannot be used in AI creations; check the current terms before any further use.
 - Test all animation timing, status and death effects, collision alignment, and frame rate on the target hardware. Crouch, slide and wall-climb sheets from the pack have not been wired to mechanics.
 - Build passed; headless browser verified imported sprite actor loading, a melee hit, the three combo steps, heavy attack, roll and dash. The screenshot showed the imported character. Full animation, death and status visuals still need hands-on review.
+
+## Clembod warrior sprite integration
+
+- The selectable Warrior now uses Clembod's Warrior-Free Animation Set V1.3 instead of Fantasy Knight. Source: https://clembod.itch.io/warrior-free-animation-set . The included license permits personal and commercial use and modification, but prohibits redistribution and resale; credit is appreciated. `game/art/clembod-warrior/LICENSE.txt` contains the supplied license.
+- Individual original frames are arranged into `game/art/clembod-warrior/warrior-atlas.png`; `game/src/warrior-atlas.js` slices them using a shared foot anchor, and `game/build.mjs` embeds the atlas in the self-contained game. Previous Fantasy Knight source sheets and loader were removed from the game folder. The original procedural warrior remains a fallback if loading fails.
+- Idle, run, jump, fall, two attack sequences, dash, hurt and death use the new pack. The pack has no roll animation, so Shift's existing dodge uses its slide animation; the movement and evasion mechanics remain as before. The third combo step reuses an attack sequence.
+- The build and a headless browser check verified sprite loading, melee hit, combo steps, heavy attack, dodge and dash. Test animation transitions, alignment and actual hit reach, status/death effects, and performance on target hardware. Extra pack animations such as ledge grab, wall slide and ladder grab are not connected.

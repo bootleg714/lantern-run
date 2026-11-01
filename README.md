@@ -6,7 +6,7 @@ Every enemy, spell, status effect, death, pickup and weather overlay comes from 
 
 ## Play
 
-Open `index.html` in a browser. It is one self-contained file with no server needed. Choose **Knight** above the controls to try the animated knight; **Warrior** selects the animated Fantasy Knight melee fighter, and **Biscuit** switches back. Switching characters restarts the run.
+Open `index.html` in a browser. It is one self-contained file with no server needed. Choose **Knight** above the controls to try the animated knight; **Warrior** selects the animated Clembod warrior melee fighter, and **Biscuit** switches back. Switching characters restarts the run.
 
 | Key | Action |
 | --- | --- |
@@ -16,7 +16,7 @@ Open `index.html` in a browser. It is one self-contained file with no server nee
 | Q, or 1 / 2 / 3 | Switch spell: fire, ice, zap |
 | R | Restart |
 
-For the warrior: X chains up to three light attacks, C performs a heavy strike, Shift rolls, F dashes, and V casts the selected spell. Q still switches spells. Rolls briefly avoid enemy damage; roll and dash have short cooldowns.
+For the warrior: X chains up to three light attacks, C performs a heavy strike, Shift dodges (shown as a slide), F dashes, and V casts the selected spell. Q still switches spells. Rolls briefly avoid enemy damage; roll and dash have short cooldowns.
 
 A controller works too: plug it in (or pair it) and press any button. Anything the browser reads as a standard gamepad works, including Xbox, PlayStation and Switch Pro controllers.
 
@@ -36,9 +36,9 @@ index.html          the built game (open this to play)
 game/
   src/main.js       game loop, level, enemies, spells, status effects, rendering
   src/hamster.js    Biscuit and the other hamster designs, drawn from shapes
-  src/free-knight.js loads and slices the Fantasy Knight animation sheets
+  src/warrior-atlas.js loads and slices the warrior animation atlas
   src/warrior.js    original articulated warrior fallback
-  art/free-knight/  Fantasy Knight sprite sheets used by the warrior
+  art/clembod-warrior/  warrior animation atlas and license
   src/knight.js     the animated knight, built on the pixelfx rig
   src/hero.js       the original rigged mage hero (set window.LANTERN_HERO = "mage" to use him)
   template.html     the page around the game
@@ -75,4 +75,4 @@ python3 game/prep_art.py assets game/art.json
 - Tiles, trees, props and pine backdrops: [Legacy Fantasy: High Forest](https://anokolisa.itch.io/) by Anokolisa.
 - Haunted Grove backdrop: AI-generated original artwork in `game/art/grove-original.png`.
 
-- Warrior sprites: [Fantasy Knight](https://aamatniekss.itch.io/fantasy-knight-free-pixelart-animated-character) by aamatniekss. The creator permits game use and modification but restricts redistributing assets on their own and use in AI creations; consult the linked license before reuse.
+- Warrior sprites: [Warrior-Free Animation Set](https://clembod.itch.io/warrior-free-animation-set) by Clembod. The license permits personal and commercial use and modifications, and prohibits redistribution or resale. See the included license and creator page.
