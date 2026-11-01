@@ -43,3 +43,8 @@
 - Individual original frames are arranged into `game/art/clembod-warrior/warrior-atlas.png`; `game/src/warrior-atlas.js` slices them using a shared foot anchor, and `game/build.mjs` embeds the atlas in the self-contained game. Previous Fantasy Knight source sheets and loader were removed from the game folder. The original procedural warrior remains a fallback if loading fails.
 - Idle, run, jump, fall, two attack sequences, dash, hurt and death use the new pack. The pack has no roll animation, so Shift's existing dodge uses its slide animation; the movement and evasion mechanics remain as before. The third combo step reuses an attack sequence.
 - The build and a headless browser check verified sprite loading, melee hit, combo steps, heavy attack, dodge and dash. Test animation transitions, alignment and actual hit reach, status/death effects, and performance on target hardware. Extra pack animations such as ledge grab, wall slide and ladder grab are not connected.
+
+## Controller support
+
+- Added browser Gamepad API polling with left stick/D-pad movement, held jump, button press edges, a 0.3 stick dead zone and a connection indicator. Keyboard and touch remain supported. Input is released while the window is unfocused or the controller disconnects. Standard Xbox-style mappings are documented in the game and README; warrior buttons include light and heavy attacks, dodge, dash, casting and spell switching.
+- Browser tests use a simulated standard gamepad; physical controller models, Bluetooth/USB reconnection, focus behavior and performance still need hands-on testing on target hardware. Browsers may require pressing a controller button while the tab is focused before exposing the device.

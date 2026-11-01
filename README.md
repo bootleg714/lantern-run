@@ -16,7 +16,7 @@ Open `index.html` in a browser. It is one self-contained file with no server nee
 | Q, or 1 / 2 / 3 | Switch spell: fire, ice, zap |
 | R | Restart |
 
-For the warrior: X chains up to three light attacks, C performs a heavy strike, Shift dodges (shown as a slide), F dashes, and V casts the selected spell. Q still switches spells. Rolls briefly avoid enemy damage; roll and dash have short cooldowns.
+For the warrior: X chains up to three light attacks, C performs a heavy strike, Shift dodges (shown as a slide), F dashes, and V casts the selected spell. Q still switches spells. Dodges briefly avoid enemy damage; dodge and dash have short cooldowns.
 
 A controller works too: plug it in (or pair it) and press any button. Anything the browser reads as a standard gamepad works, including Xbox, PlayStation and Switch Pro controllers.
 
@@ -28,6 +28,8 @@ A controller works too: plug it in (or pair it) and press any button. Anything t
 | Y or RB | Next spell |
 | LB | Previous spell |
 | Start | Restart |
+
+Controller (standard Xbox-style layout): move with the left stick or D-pad, jump with A, and restart with Start. For Biscuit or the knight, X or B casts, Y or RB selects the next spell, and LB selects the previous spell. For the warrior, X attacks, Y uses a heavy attack, B dodges, RB dashes, RT casts, and LB switches spells. Press a controller button while the game tab is focused to connect.
 
 ## Project layout
 

@@ -106,8 +106,8 @@ td.where { color: var(--muted); white-space: nowrap; }
     <span class="pad-label">Controller</span>
     <span><kbd>Stick</kbd> or <kbd>D-pad</kbd> move</span>
     <span><kbd>A</kbd> jump</span>
-    <span><kbd>X</kbd> or <kbd>B</kbd> cast</span>
-    <span><kbd>Y</kbd> or <kbd>RB</kbd> next spell, <kbd>LB</kbd> previous</span>
+    <span id="padStandard"><kbd>X</kbd> or <kbd>B</kbd> cast | <kbd>Y</kbd> or <kbd>RB</kbd> next spell | <kbd>LB</kbd> previous</span>
+    <span id="padWarrior" hidden><kbd>X</kbd> combo | <kbd>Y</kbd> heavy | <kbd>B</kbd> dodge | <kbd>RB</kbd> dash | <kbd>RT</kbd> cast | <kbd>LB</kbd> switch spell</span>
     <span><kbd>Start</kbd> restart</span>
   </div>
 
@@ -493,7 +493,48 @@ if (IS_WARRIOR) {
 }
 hold("tJump", "Space", () => (jumpPressed = true)); hold("tCast", "KeyX", () => (castPressed = true)); hold("tSwap", "KeyQ", () => (swapPressed = true));
 document.getElementById("restartBtn").addEventListener("click", () => { newGame(); cv.focus(); });
-const down = (...c) => c.some((k) => keys.has(k));
+const padState = { left: false, right: false, jump: false, previous: [], index: null };
+const padStatus = document.getElementById("padStatus");
+if (IS_WARRIOR) {
+  document.getElementById("padStandard").hidden = true;
+  document.getElementById("padWarrior").hidden = false;
+}
+// Poll every frame: buttons trigger once per press, while movement and jump can be held.
+function pollGamepad() {
+  let pad = null;
+  try { if (navigator.getGamepads) pad = Array.from(navigator.getGamepads()).find(p => p && p.connected) || null; } catch (_) { /* no gamepad access */ }
+  if (!pad || !document.hasFocus()) {
+    padState.left = padState.right = padState.jump = false;
+    padState.previous = []; padState.index = null;
+    padStatus.hidden = !pad;
+    if (pad) padStatus.textContent = "Controller connected";
+    return;
+  }
+  if (padState.index !== pad.index) { padState.previous = []; padState.index = pad.index; }
+  padStatus.hidden = false; padStatus.textContent = "Controller connected";
+  const buttons = pad.buttons.map(b => !!b && (b.pressed || b.value > 0.5));
+  const pressed = i => !!buttons[i] && !padState.previous[i];
+  const axis = pad.axes[0] || 0;
+  padState.left = axis < -0.3 || !!buttons[14];
+  padState.right = axis > 0.3 || !!buttons[15];
+  padState.jump = !!buttons[0];
+  if (pressed(0)) jumpPressed = true;
+  if (IS_WARRIOR) {
+    if (pressed(2)) castPressed = true;
+    if (pressed(3)) heavyPressed = true;
+    if (pressed(1)) rollPressed = true;
+    if (pressed(5)) dashPressed = true;
+    if (pressed(7)) magicPressed = true;
+    if (pressed(4)) swapPressed = true;
+  } else {
+    if (pressed(2) || pressed(1)) castPressed = true;
+    if (pressed(3) || pressed(5)) swapPressed = true;
+    if (pressed(4) && P) P.spell = (P.spell + SPELLS.length - 1) % SPELLS.length;
+  }
+  if (pressed(9) && P) newGame();
+  padState.previous = buttons;
+}
+const down = (...c) => c.some((k) => keys.has(k)) || (padState.jump && c.some(k => JUMP.includes(k)));
 
 // ---------------- helpers ----------------
 const box = (a, b) => a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1];
@@ -730,7 +771,7 @@ function updateHero(dt) {
   const speed = RUN * (st === "haste" ? 1.6 : st === "frozen" ? 0.5 : 1);
   const jumpV = JUMPV * (st === "haste" ? 1.1 : st === "frozen" ? 0.78 : 1);
   const acc = P.onIce ? 380 : ACC, fric = P.onIce ? 140 : FRIC;
-  const L = state === "play" && down("ArrowLeft", "KeyA"), R = state === "play" && down("ArrowRight", "KeyD");
+  const L = state === "play" && (down("ArrowLeft", "KeyA") || padState.left), R = state === "play" && (down("ArrowRight", "KeyD") || padState.right);
   const dir = (R ? 1 : 0) - (L ? 1 : 0);
   if (dir && !(IS_WARRIOR && (P.rollT > 0 || P.dashT > 0))) { P.vx += dir * acc * dt * (Math.sign(P.vx) !== dir ? 1.6 : 1); P.face = dir; }
   else if (!(IS_WARRIOR && (P.rollT > 0 || P.dashT > 0))) { const s = Math.sign(P.vx), m = Math.max(0, Math.abs(P.vx) - fric * dt); P.vx = s * m; }
@@ -857,6 +898,7 @@ function updateWorld(dt) {
 // ---------------- update ----------------
 function update(dt) {
   time += dt;
+  pollGamepad();
   updateHero(dt);
   jumpPressed = castPressed = swapPressed = heavyPressed = rollPressed = dashPressed = magicPressed = false;
   updateEnemies(dt);
