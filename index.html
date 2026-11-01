@@ -125,6 +125,8 @@ td.where { color: var(--muted); white-space: nowrap; }
             <tr><td>Flying skull</td><td class="where">Frost, Ember</td><td>Made of fire, so <span class="f">fire</span> does nothing. Use <span class="i">ice</span> or <span class="z">zap</span>. Blue ones freeze you.</td></tr>
             <tr><td>Ghost</td><td class="where">Grove</td><td>Can't be stomped and hexes you. <span class="f">Fire</span> or <span class="z">zap</span>.</td></tr>
             <tr><td>Eyeball</td><td class="where">Grove</td><td>Fires hexing orbs. Stomp it or shoot it.</td></tr>
+            <tr><td>King Gloop</td><td class="where">Frost boss</td><td>Mini boss. Fire does double, ice does nothing. Jump the frost lines when he lands; he splits at half health.</td></tr>
+            <tr><td>The Hollow Eye</td><td class="where">Grove boss</td><td>Final boss. Zap does double, ice stuns it. Dodge the lightning marks and stomp it from the ledges.</td></tr>
           </tbody>
         </table>
       </div>
@@ -193,6 +195,13 @@ const starIris = __r(61);
 const snow = __r(63);
 const fallingLeaves = __r(65);
 const fog = __r(66);
+const iceSpikes = __r(67);
+const snowflakeBurst = __r(68);
+const lightningStrike = __r(69);
+const plasmaExplosion = __r(70);
+const manaBurst = __r(72);
+const spawnPortal = __r(74);
+const {rasterText, textWidth} = __r(8);
 
 const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, NA = 4, COLS = AW * NA;
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -265,7 +274,7 @@ const SOLID = (t) => t === GR || t === PL || t === IC;
 const tileAt = (tx, ty) => (tx < 0 || tx >= COLS ? GR : ty < 0 || ty >= ROWS ? E : grid[ty][tx]);
 const solid = (tx, ty) => SOLID(tileAt(tx, ty));
 
-const SPEC = { torches: [], coins: [], enemies: [], hearts: [], potions: [], globes: [], wisps: [], flags: [] };
+const SPEC = { torches: [], coins: [], enemies: [], hearts: [], potions: [], globes: [], wisps: [], flags: [], arenas: [] };
 function buildLevel() {
   for (const r of grid) r.fill(0);
   for (const k in SPEC) SPEC[k] = [];
@@ -290,12 +299,15 @@ function buildLevel() {
     }
     if (a === 1) {
       ground(0, 11); pool(12, 15); ground(16, 27); ground(20, 23, 7); plank(29, 30, 6); ground(32, 40); pool(41, 43); ground(44, 45);
-      plank(36, 39, 5); ground(49, 63); ground(55, 57, 7);
+      plank(36, 39, 5); ground(49, 63);
       SPEC.torches.push(X(5), X(18), X(34), X(51), X(61));
-      coinsRow(12, 15, 104); coinsRow(20, 23, 96); coinsRow(29, 30, 80); coinsRow(41, 43, 104); coinsRow(55, 57, 96);
+      coinsRow(12, 15, 104); coinsRow(20, 23, 96); coinsRow(29, 30, 80); coinsRow(41, 43, 104);
       en("slime", 8, { x0: 5, x1: 11 }); en("skull", 25, { hy: 84 }); en("frog", 33, { x0: 32, x1: 35 });
-      en("slime", 38, { x0: 32, x1: 40 }); en("skull", 47, { hy: 70 }); en("snake", 60, { x0: 58, x1: 62 }); en("slime", 52, { x0: 49, x1: 54 });
+      en("slime", 38, { x0: 32, x1: 40 }); en("skull", 47, { hy: 70 });
       SPEC.hearts.push([X(37), 80]);
+      // mini boss: King Gloop's arena fills the end of Frost Hollow, with a checkpoint just before it
+      SPEC.flags.push(X(44));
+      SPEC.arenas.push({ kind: "gloop", x0: (o + 49) * T, x1: (o + 64) * T, floor: 9 * T });
     }
     if (a === 2) {
       ground(0, 9); lava(10, 14); plank(12, 12, 6); ground(15, 24); ground(19, 21, 7); lava(25, 31); plank(27, 28, 7); plank(30, 30, 5);
@@ -307,14 +319,16 @@ function buildLevel() {
       SPEC.globes.push(X(35));
     }
     if (a === 3) {
-      ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); ground(48, 50, 7);
+      ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); plank(48, 50, 6); plank(56, 58, 6);
       for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
-      SPEC.torches.push(X(4), X(18), X(37), X(53));
-      coinsRow(5, 9, 128); SPEC.coins.push([X(13), 112], [X(14), 100], [X(15), 112]); coinsRow(20, 23, 80); coinsRow(40, 42, 96); coinsRow(48, 50, 96);
+      SPEC.torches.push(X(4), X(18), X(37), X(46), X(61));
+      coinsRow(5, 9, 128); SPEC.coins.push([X(13), 112], [X(14), 100], [X(15), 112]); coinsRow(20, 23, 80); coinsRow(40, 42, 96);
       en("ghost", 11, { gy: 110 }); en("slime", 25, { x0: 17, x1: 29 }); en("eyeball", 29); en("ghost", 38, { gy: 100 });
-      en("eyeball", 45); en("bat", 46, { by: 58, x0: 43, x1: 52 }); en("ghost", 55, { gy: 100 });
-      SPEC.hearts.push([X(21), 96]); SPEC.wisps.push(X(6), X(58));
-      SPEC.chest = X(57);
+      SPEC.hearts.push([X(21), 96], [X(41), 112]); SPEC.wisps.push(X(6));
+      // final boss: the Hollow Eye guards the chest; the two ledges are for stomping it
+      SPEC.flags.push(X(36));
+      SPEC.arenas.push({ kind: "eye", x0: (o + 44) * T, x1: (o + 63) * T, floor: 9 * T });
+      SPEC.chest = X(53);
     }
   }
 }
@@ -438,7 +452,8 @@ function newGame() {
   wisps = SPEC.wisps.map((x) => createFx(wisp, { x, y: surfaceAt(x) - 4, seed: x % 13 }));
   makeTorches();
   enemies = SPEC.enemies.map(makeEnemy);
-  chest = { x: SPEC.chest, y: surfaceAt(SPEC.chest), fx: createFx(chestOpen, { x: SPEC.chest, y: surfaceAt(SPEC.chest) }), opened: false };
+  chest = { x: SPEC.chest, y: surfaceAt(SPEC.chest), fx: createFx(chestOpen, { x: SPEC.chest, y: surfaceAt(SPEC.chest) }), opened: false, hidden: true };
+  arenas = SPEC.arenas.map(makeArena); hazards = [];
   flags = SPEC.flags.map((x, i) => ({ x, y: surfaceAt(x), hit: i === 0 }));
   spawnX = flags[0].x + 10;
   resetHero(spawnX); P.hp = 4;
@@ -545,6 +560,8 @@ function overlapsSolid(x, y, w, h) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (solid(tx, ty)) return { tx, ty };
   // frozen enemies are solid blocks
   for (const e of enemies) if (e.alive && e.frozenT > 0 && PLATFORM_WHEN_FROZEN[e.kind]) { const b = enemyBox(e); if (box([x, y, w, h], b)) return { block: b }; }
+  // a sealed boss arena's rune walls
+  for (const A of arenas) if (A.locked) for (const b of [[A.x0 - 6, -400, 6, 800], [A.x1, -400, 6, 800]]) if (box([x, y, w, h], b)) return { block: b };
   return null;
 }
 const touchesTile = (type) => {
@@ -617,6 +634,13 @@ function cast() {
     const d = Math.hypot(dx, dy);
     if (d < best) { best = d; vx = (dx / d) * speed; vy = (dy / d) * speed; }
   }
+  for (const A of arenas) {
+    if (!A.locked || !bossHittable(A.boss)) continue;
+    const b = bossBox(A.boss), dx = b[0] + b[2] / 2 - hx, dy = b[1] + b[3] / 2 - hy;
+    if (Math.sign(dx) !== P.face || Math.abs(dy) > Math.abs(dx) * 1.2 + 16) continue;
+    const d = Math.hypot(dx, dy);
+    if (d < best + 40) { best = d; vx = (dx / d) * speed; vy = (dy / d) * speed; }
+  }
   const angle = (vx < 0 ? -1 : 1) * Math.atan2(vy, Math.abs(vx));
   const mod = sp.key === "fire" ? fireball : iceLance;
   projectiles.push({ kind: sp.key, x: hx, y: hy, vx, vy, life: sp.key === "fire" ? 1.4 : 1.2, fx: createFx(mod, { x: hx, y: hy, flip: vx < 0, angle, seed: (Math.random() * 99) | 0 }) });
@@ -624,21 +648,23 @@ function cast() {
 function zap(hx, hy) {
   const hit = new Set();
   let from = [hx, hy], range = 150;
+  const targets = enemies.filter((e) => e.alive).map((e) => ({ e, b: enemyBox(e) }));
+  for (const A of arenas) if (A.locked && bossHittable(A.boss)) targets.push({ e: A.boss, arena: A, b: bossBox(A.boss) });
   for (let k = 0; k < 3; k++) {
     let best = null, bd = range;
-    for (const e of enemies) {
-      if (!e.alive || hit.has(e)) continue;
-      const b = enemyBox(e), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2, dx = cx - from[0], dy = cy - from[1];
+    for (const tg of targets) {
+      if (hit.has(tg.e)) continue;
+      const b = tg.b, cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2, dx = cx - from[0], dy = cy - from[1];
       if (k === 0 && Math.sign(dx) !== P.face) continue;
-      if (Math.abs(dy) > 80) continue;
+      if (Math.abs(dy) > (tg.arena ? 110 : 80)) continue;
       const d = Math.hypot(dx, dy);
-      if (d < bd) { bd = d; best = { e, cx, cy }; }
+      if (d < bd) { bd = d; best = { e: tg.e, arena: tg.arena, cx, cy }; }
     }
     if (!best) break;
     hit.add(best.e);
     bolts.push({ a: from, b: [best.cx, best.cy], t: 0.22, seed: Math.random() * 1000 });
     spawn(zapHit, { x: best.cx, y: best.cy, flip: best.cx < from[0] });
-    killEnemy(best.e, "zap");
+    if (best.arena) damageBoss(best.arena, 1, "zap", best.cx, best.cy); else killEnemy(best.e, "zap");
     from = [best.cx, best.cy]; range = 110;
   }
   if (!hit.size) bolts.push({ a: [hx, hy], b: [hx + P.face * 70, hy + (Math.random() - 0.5) * 20], t: 0.18, seed: Math.random() * 1000 });
@@ -672,6 +698,12 @@ function updateProjectiles(dt) {
           if (e.frozenT > 0 || e.kind === "skull") killEnemy(e, "ice");
           else { e.frozenT = 5; e.ice = freezeFx(e); spawn(hitSpark, { x: p.x, y: p.y + 6, flip: p.vx > 0, palette: SPARK_ICE }); score += 20; }
         }
+        break;
+      }
+      if (!gone) for (const A of arenas) {
+        if (!A.locked || !bossHittable(A.boss) || !box([p.x - 7, p.y - 7, 14, 14], bossBox(A.boss))) continue;
+        gone = true;
+        damageBoss(A, 1, p.kind, p.x, p.y);
         break;
       }
     }
@@ -758,6 +790,413 @@ function heroVsEnemies() {
   }
 }
 
+// ---------------- bosses ----------------
+// Level 1 ends in two fights. King Gloop, a crowned frost slime, holds the end of Frost Hollow; the Hollow Eye guards
+// the chest at the end of Haunted Grove. Entering an arena seals it, shows the boss's health bar, and if the hero
+// dies the arena reopens and the boss resets. Both are pixelfx critters drawn at twice their size.
+const BOSS_GRAV = 1100;
+const WHITE7 = ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"];
+const RED7B = ["#2a0606", "#5a0c0c", "#9a1818", "#d43a2a", "#ff6a4a", "#ffb09a", "#ffe8e0"];
+const SHOT_PAL = ["#140620", "#3a0f5e", "#6a1d9c", "#a03ad6", "#d46cf2", "#f2a8ff", "#ffe2ff", "#ffffff"];
+const ROOT_PAL = ["#06141a", "#0c2a30", "#145050", "#1e7a6e", "#34b096", "#7ae8c8", "#d4fff0", "#ffffff"];
+const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+let arenas = [], hazards = [];
+
+function makeGloop(A) {
+  return { kind: "gloop", name: "King Gloop", hp: 14, max: 14, x: (A.x0 + A.x1) / 2 + 40, y: A.floor, vx: 0, vy: 0, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, hops: 0, phase: 1, sx: 1, sy: 1, deathT: 0, big: false };
+}
+function makeEye(A) {
+  const homeY = A.floor - 74;
+  return { kind: "eye", name: "The Hollow Eye", hp: 28, max: 28, x: (A.x0 + A.x1) / 2, cy: A.floor + 40, homeY, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.2, seq: 0, queue: [], stunT: 0,
+    shakeX: 0, tx: 0, deathT: 0, nextPop: 0, boom: false };
+}
+function makeArena(spec) { return { ...spec, locked: false, cleared: false, boss: spec.kind === "gloop" ? makeGloop(spec) : makeEye(spec) }; }
+const setB = (B, s) => { B.state = s; B.t = 0; };
+const bossBox = (B) => B.kind === "gloop"
+  ? [B.x - 23 * B.sx, B.y - 32 * B.sy, 46 * B.sx, 32 * B.sy]
+  : [B.x - 22 + B.shakeX, B.cy - 22, 46, 44];
+const bossHittable = (B) => !["wait", "intro", "dying", "dead"].includes(B.state);
+const lockedArena = () => arenas.find((A) => A.locked) || null;
+
+function lockArena(A) {
+  A.locked = true;
+  const B = A.boss;
+  setB(B, "intro");
+  // clear ordinary enemies out of the arena so it's a one-on-one fight
+  for (const e of enemies) if (e.alive && e.x > A.x0 - 200 && e.x < A.x1 + 40) { e.alive = false; spawn(poof, { x: e.x, y: e.y, palette: SMOKE }); }
+  if (B.kind === "gloop") {
+    say("King Gloop", "Fire melts him. Jump over the frost lines when he lands.", 5000);
+    shake = 0.3;
+  } else {
+    spawn(spawnPortal, { x: B.x, y: A.floor });
+    say("The Hollow Eye", "Zap hits it hardest. Climb the ledges to stomp it.", 5000);
+  }
+}
+function resetArena(A) {
+  A.locked = false;
+  A.boss = A.kind === "gloop" ? makeGloop(A) : makeEye(A);
+  for (const e of enemies) if (e.minion) e.alive = false;
+  hazards = [];
+}
+
+function damageBoss(A, amount, how, px, py) {
+  const B = A.boss;
+  if (!bossHittable(B)) return false;
+  let dmg = amount;
+  if (B.kind === "gloop" && how === "fire") dmg = amount * 2;
+  if (B.kind === "gloop" && how === "ice") dmg = 0;
+  if (B.kind === "eye" && how === "zap") dmg = amount * 2;
+  if (B.kind === "eye" && how === "ice") B.stunT = 1.1;
+  spawn(hitSpark, { x: px, y: py, flip: px < B.x, ...(how === "ice" ? { palette: SPARK_ICE } : how === "zap" ? { palette: SPARK_ZAP } : {}) });
+  if (dmg === 0) { spawn(damageNumber, { x: px, y: py - 10, text: "RESIST", palette: ICE }); return true; }
+  B.hp = Math.max(0, B.hp - dmg); B.flash = 0.12;
+  spawn(damageNumber, { x: px, y: py - 10, text: "-" + dmg, ...(dmg > amount ? { palette: GOLD } : {}) });
+  score += 10 * dmg; shake = Math.max(shake, 0.08);
+  if (B.hp <= 0) { setB(B, "dying"); B.deathT = 0; B.nextPop = 0; hazards = hazards.filter((h) => h.kind !== "strike"); shake = 0.4; }
+  return true;
+}
+
+// ---- King Gloop
+function updateGloop(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  if (B.state !== "air") B.anim += dt;
+  switch (B.state) {
+    case "wait": case "dead": return;
+    case "dying":
+      B.deathT += dt; B.sx = 1 + Math.sin(B.deathT * 45) * 0.06; B.sy = 1 - Math.min(0.35, B.deathT * 0.25);
+      if (B.deathT > 1.3) gloopDefeated(A);
+      return;
+    case "intro":
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.4) setB(B, "idle");
+      break;
+    case "idle":
+      B.dir = hx < B.x ? -1 : 1;
+      B.sx += (1 - B.sx) * Math.min(1, dt * 10); B.sy += (1 - B.sy) * Math.min(1, dt * 10);
+      if (B.t > (B.phase > 1 ? 0.45 : 0.8)) setB(B, "squash");
+      break;
+    case "squash": {
+      const k = Math.min(1, B.t / 0.35);
+      B.sx = 1 + 0.18 * k; B.sy = 1 - 0.25 * k;
+      if (B.t > 0.35) {
+        B.hops++; B.big = B.hops % 3 === 0;
+        const vy = B.big ? -490 : -390, air = (2 * -vy) / BOSS_GRAV, tx = clampN(hx, A.x0 + 34, A.x1 - 34);
+        B.vx = (tx - B.x) / air; B.vy = vy; B.sx = 0.82; B.sy = 1.22;
+        setB(B, "air");
+      }
+      break;
+    }
+    case "air":
+      B.vy += BOSS_GRAV * dt; B.x += B.vx * dt; B.y += B.vy * dt;
+      B.x = clampN(B.x, A.x0 + 26, A.x1 - 26);
+      B.sx += (0.92 - B.sx) * Math.min(1, dt * 6); B.sy += (1.08 - B.sy) * Math.min(1, dt * 6);
+      if (B.vy > 0 && B.y >= A.floor) { B.y = A.floor; gloopLand(A); setB(B, "land"); }
+      break;
+    case "land": {
+      const k = Math.min(1, B.t / 0.3);
+      B.sx = 1.3 - 0.3 * k; B.sy = 0.7 + 0.3 * k;
+      if (B.t > 0.3) setB(B, "idle");
+      break;
+    }
+  }
+  if (B.phase === 1 && B.hp <= B.max / 2 && B.state !== "air") { B.phase = 2; gloopSplit(A); }
+}
+function gloopLand(A) {
+  const B = A.boss, reach = B.big ? 170 : 118, height = B.big ? 34 : 24;
+  shake = B.big ? 0.4 : 0.25;
+  puff(B.x, A.floor, 14, 160, "#e8f4ff");
+  for (const dir of [-1, 1]) {
+    const ox = B.x + dir * 20;
+    hazards.push({ kind: "spikes", ox, dir, reach, floor: A.floor, t: 0, fx: createFx(iceSpikes, { x: ox, y: A.floor, flip: dir < 0, reach, height, seed: (Math.random() * 99) | 0 }) });
+  }
+}
+function gloopSplit(A) {
+  const B = A.boss;
+  B.flash = 0.3; shake = 0.3;
+  say("", "King Gloop splits! Clear the little ones or keep hitting the king.", 3000);
+  for (const dx of [-34, 34]) {
+    const x = clampN(B.x + dx, A.x0 + 24, A.x1 - 24);
+    const e = makeEnemy({ kind: "slime", area: 1, x, x0: A.x0 + 20, x1: A.x1 - 20 });
+    e.minion = true; e.dir = dx < 0 ? -1 : 1;
+    enemies.push(e);
+    spawn(poof, { x, y: A.floor, palette: ICE.slice(1) });
+  }
+}
+function gloopDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  for (const e of enemies) if (e.minion && e.alive) killEnemy(e, "ice");
+  spawn(snowflakeBurst, { x: B.x, y: A.floor });
+  for (const dx of [-18, 0, 18]) spawn(poof, { x: B.x + dx, y: A.floor - (dx ? 4 : 10), palette: ICE.slice(1) });
+  spawn(damageNumber, { x: B.x, y: A.floor - 52, text: "+1500", palette: GOLD });
+  score += 1500; shake = 0.5;
+  hearts.push({ x: B.x, y: A.floor, b: bakeOf(heartPickup, {}, true) });
+  for (let i = 0; i < 6; i++) { const x = B.x - 50 + i * 20; coins.push({ x, y: A.floor - 30 - Math.round(Math.sin((i / 5) * Math.PI) * 18), ph: i * 0.3, b: bakeOf(coinSpin, { seed: 1 + (i % 3) }, true) }); }
+  say("King Gloop melts!", "The way to Ember Depths is open.", 4000);
+}
+const CROWN = ["..y....y....y..", ".yYy..yYy..yYy.", ".yYYyyYYYyyYYy.", ".yYYYYYYYYYYYy.", ".yRYYYYBYYYYRy.", ".yyyyyyyyyyyyy."];
+const CROWN_PAL = { y: 0xff0e5a8a, Y: 0xff4ac8f5, R: 0xff4a34e8, B: 0xfff4c862 };
+function drawGloop(A) {
+  const B = A.boss;
+  if (B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const b = bakeOf(slime, { seed: 1, hop: 0, palette: B.flash > 0 ? WHITE7 : AREAS[1].pal.slime, flip: B.dir < 0 });
+  const top = blitScaled(frame, b, B.anim, B.x, B.y, 2 * B.sx, 2 * B.sy);
+  // the crown rides the top of his head, tipped back while he's in the air
+  const cx = Math.round(B.x - CROWN[0].length + (B.dir < 0 ? 3 : -3)), cy = Math.round(top) - 9 + (B.state === "air" ? 1 : 0);
+  for (let y = 0; y < CROWN.length; y++) for (let x = 0; x < CROWN[0].length; x++) {
+    const ch = CROWN[y][x]; if (ch === ".") continue;
+    for (let k = 0; k < 4; k++) {
+      const px = cx + x * 2 + (k & 1) - frame.ox, py = cy + y * 2 + (k >> 1) - frame.oy;
+      if (px >= 0 && py >= 0 && px < W && py < H) frame.color[py * W + px] = B.flash > 0 ? 0xffffffff : CROWN_PAL[ch];
+    }
+  }
+}
+
+// ---- The Hollow Eye
+function updateEye(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.anim += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt); B.shakeX = 0;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt; B.shakeX = (Math.random() - 0.5) * 6; shake = Math.max(shake, 0.12);
+    if (B.deathT > B.nextPop) { B.nextPop += 0.22; spawn(poof, { x: B.x + (Math.random() - 0.5) * 50, y: B.cy + 10 + (Math.random() - 0.5) * 30, palette: SHOT_PAL.slice(2) }); }
+    if (!B.boom && B.deathT > 1.5) { B.boom = true; spawn(plasmaExplosion, { x: B.x, y: B.cy }); shake = 0.6; }
+    if (B.deathT > 2.1) eyeDefeated(A);
+    return;
+  }
+  B.phase = B.hp > B.max * 0.6 ? 1 : B.hp > B.max * 0.3 ? 2 : 3;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    spawn(manaBurst, { x: B.x, y: B.cy + 24, palette: SHOT_PAL });
+    say("", B.phase === 2 ? "The eye calls up the restless dead!" : "It's diving now. Keep moving!", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  if (B.stunT > 0) { B.stunT -= dt; return; }
+  switch (B.state) {
+    case "intro": {
+      const k = Math.min(1, B.t / 1.6);
+      B.cy = A.floor + 40 + (B.homeY - A.floor - 40) * (1 - (1 - k) ** 3);
+      if (B.t > 2) setB(B, "float");
+      break;
+    }
+    case "float": {
+      const sp = [0, 34, 48, 62][B.phase];
+      B.x += B.dir * sp * dt;
+      if (B.x < A.x0 + 60) B.dir = 1;
+      if (B.x > A.x1 - 60) B.dir = -1;
+      B.cy += (B.homeY + Math.sin(B.t * 1.6) * 8 - B.cy) * Math.min(1, dt * 3);
+      B.atk -= dt;
+      if (B.atk <= 0) eyeAttack(A);
+      break;
+    }
+    case "telegraph":
+      B.shakeX = (Math.random() - 0.5) * 4;
+      if (B.t > 0.7) { B.tx = clampN(hx, A.x0 + 40, A.x1 - 40); setB(B, "dive"); }
+      break;
+    case "dive": {
+      const ty = A.floor - 30, dx = B.tx - B.x, dy = ty - B.cy, d = Math.hypot(dx, dy), step = 300 * dt;
+      if (d <= step) { B.x = B.tx; B.cy = ty; eyeSlam(A); setB(B, "dizzy"); }
+      else { B.x += (dx / d) * step; B.cy += (dy / d) * step; }
+      break;
+    }
+    case "dizzy":
+      if (B.t > 1.7) setB(B, "rise");
+      break;
+    case "rise":
+      B.cy += (B.homeY - B.cy) * Math.min(1, dt * 2.5);
+      if (Math.abs(B.cy - B.homeY) < 2) { setB(B, "float"); B.atk = 0.8; }
+      break;
+  }
+}
+function eyeShot(A, angle) {
+  const B = A.boss, sx = B.x, sy = B.cy + 4, sp = 100 + 15 * B.phase, vx = Math.cos(angle) * sp, vy = Math.sin(angle) * sp;
+  projectiles.push({ kind: "shot", x: sx, y: sy, vx, vy, life: 4, fx: createFx(plasmaShot, { x: sx, y: sy, flip: vx < 0, angle: (vx < 0 ? -1 : 1) * Math.atan2(vy, Math.abs(vx)), palette: SHOT_PAL }) });
+}
+const aimAt = (A) => Math.atan2(P.y + P.h / 2 - (A.boss.cy + 4), P.x + 6 - A.boss.x);
+function strikeAt(A, x) {
+  x = clampN(x, A.x0 + 16, A.x1 - 16);
+  hazards.push({ kind: "strike", x, floor: A.floor, t: 0, fx: createFx(lightningStrike, { x, y: A.floor, seed: (Math.random() * 99) | 0 }) });
+}
+function eyeAttack(A) {
+  const B = A.boss, ph = B.phase, q = (t, f) => B.queue.push({ t, f });
+  const list = ph === 1 ? ["volley", "strike"] : ph === 2 ? ["volley", "summon", "strike", "volley"] : ["dive", "volley", "strike", "summon"];
+  const atk = list[B.seq++ % list.length];
+  B.atk = [0, 2.4, 2.0, 1.7][ph];
+  if (atk === "volley") {
+    if (ph === 1) for (let k = 0; k < 3; k++) q(k * 0.28, () => eyeShot(A, aimAt(A)));
+    else {
+      q(0, () => { const a = aimAt(A); for (let k = -2; k <= 2; k++) eyeShot(A, a + k * 0.3); });
+      if (ph === 3) q(0.7, () => eyeShot(A, aimAt(A)));
+    }
+  } else if (atk === "strike") {
+    const n = ph === 1 ? 1 : ph === 2 ? 2 : 3;
+    for (let k = 0; k < n; k++) q(k * 0.35, () => strikeAt(A, P.x + 6 + (k === 0 ? 0 : (k % 2 ? 1 : -1) * 58)));
+  } else if (atk === "summon") {
+    const alive = enemies.filter((e) => e.minion && e.alive).length;
+    if (alive >= 2) { B.atk = 0.4; return; }
+    const x = P.x + 6 < (A.x0 + A.x1) / 2 ? A.x1 - 50 : A.x0 + 50;
+    spawn(spawnPortal, { x, y: A.floor });
+    q(1.0, () => {
+      const e = makeEnemy({ kind: "ghost", area: 3, x, gy: A.floor - 40, x0: x, x1: x });
+      e.minion = true; enemies.push(e);
+      spawn(poof, { x, y: A.floor - 10, palette: ["#10142a", "#3e4f86", "#a3b8e2", "#d8e4ff", "#ffffff", "#ffffff"] });
+    });
+  } else if (atk === "dive") setB(B, "telegraph");
+}
+function eyeSlam(A) {
+  const B = A.boss;
+  shake = 0.45;
+  puff(B.x, A.floor, 16, 180);
+  for (const dir of [-1, 1]) {
+    const ox = B.x + dir * 18;
+    hazards.push({ kind: "spikes", ox, dir, reach: 96, floor: A.floor, t: 0, fx: createFx(iceSpikes, { x: ox, y: A.floor, flip: dir < 0, reach: 96, height: 22, palette: ROOT_PAL, seed: (Math.random() * 99) | 0 }) });
+  }
+}
+function eyeDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  for (const e of enemies) if (e.minion && e.alive) killEnemy(e, "zap");
+  spawn(manaBurst, { x: chest.x, y: chest.y - 6 });
+  spawn(collectBurst, { x: chest.x, y: chest.y - 4, palette: GOLD });
+  chest.hidden = false;
+  spawn(damageNumber, { x: B.x, y: B.cy - 30, text: "+5000", palette: GOLD });
+  score += 5000; shake = 0.5;
+  say("The Hollow Eye falls!", "Open the chest to finish Level 1.", 5000);
+}
+function drawEye(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && B.boom) return;
+  const pal = B.flash > 0 ? { palette: WHITE7, flesh: WHITE7, iris: WHITE7 } : B.stunT > 0 ? { palette: ICE, flesh: ICE, iris: ICE } : B.state === "telegraph" ? { flesh: RED7B } : {};
+  const b = bakeOf(eyeball, { seed: 2, flip: P.x + 6 < B.x, ...pal });
+  const x = B.x + B.shakeX, feet = B.cy + 96;
+  blitScaled(frame, b, B.anim, x, feet, 2, 2, A.floor + 2);
+  // a violet glow round it, angrier as it weakens, red while it winds up a dive
+  const col = B.state === "telegraph" ? [255, 60, 50] : [170, 80, 255], k0 = 0.35 + 0.15 * (B.phase - 1);
+  addGlow(x, B.cy, 34, col, k0);
+  if (B.state === "dizzy") for (let i = 0; i < 3; i++) {
+    const a = time * 5 + (i * Math.PI * 2) / 3, sx = x + Math.cos(a) * 20, sy = B.cy - 30 + Math.sin(a) * 5;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) plot(sx + dx, sy + dy, 0xff6be2ff);
+  }
+}
+
+// ---- shared
+function plot(x, y, c) { const px = Math.round(x) - frame.ox, py = Math.round(y) - frame.oy; if (px >= 0 && py >= 0 && px < W && py < H) frame.color[py * W + px] = c; }
+function addGlow(x, y, r, [cr, cg, cb], k0) {
+  const gx = Math.round(x) - frame.ox, gy = Math.round(y) - frame.oy, L = frame.light;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const d = Math.hypot(dx, dy); if (d >= r) continue;
+    const px = gx + dx, py = gy + dy; if (px < 0 || py < 0 || px >= W || py >= H) continue;
+    const k = (1 - d / r) ** 2 * k0, i = py * W + px, v = L[i];
+    L[i] = (255 << 24) | (Math.min(255, ((v >>> 16) & 255) + cb * k) << 16) | (Math.min(255, ((v >>> 8) & 255) + cg * k) << 8) | Math.min(255, (v & 255) + cr * k);
+  }
+}
+/** Draw a baked loop frame scaled by (kx, ky) about its origin, placed at world (x, y); returns the top of its solid body (world y). */
+function blitScaled(frame, b, t, x, y, kx, ky, clipY = Infinity) {
+  const f = bakedFrame(b, t);
+  if (f.x1 < 0) return y;
+  const FW = frame.w, FH = frame.h, C = frame.color, L = frame.light, ox = b.ox, oy = b.oy;
+  const dx0 = Math.floor((f.x0 - ox) * kx), dx1 = Math.ceil((f.x1 + 1 - ox) * kx), dy0 = Math.floor((f.y0 - oy) * ky), dy1 = Math.ceil((f.y1 + 1 - oy) * ky);
+  const X = Math.round(x) - frame.ox, Y = Math.round(y) - frame.oy, clip = clipY - frame.oy;
+  let top = Infinity;
+  for (let dy = dy0; dy < dy1; dy++) {
+    let solidRow = 0;
+    const py = Y + dy; if (py < 0 || py >= FH || py >= clip) continue;
+    const sy = Math.floor(dy / ky) + oy; if (sy < f.y0 || sy > f.y1) continue;
+    for (let dx = dx0; dx < dx1; dx++) {
+      const px = X + dx; if (px < 0 || px >= FW) continue;
+      const sx = Math.floor(dx / kx) + ox; if (sx < f.x0 || sx > f.x1) continue;
+      const j = (sy - f.y0) * f.cw + (sx - f.x0), i = py * FW + px, s = f.color[j];
+      if (s) {
+        const a = s >>> 24;
+        if (a === 255) { C[i] = s; if (++solidRow === 8 && dy < top) top = dy; }
+        else if (!C[i]) C[i] = s;
+        else { const k = a / 255, d = C[i]; C[i] = (Math.max(a, d >>> 24) << 24) | (Math.round(((s >>> 16) & 255) * k + ((d >>> 16) & 255) * (1 - k)) << 16) | (Math.round(((s >>> 8) & 255) * k + ((d >>> 8) & 255) * (1 - k)) << 8) | Math.round((s & 255) * k + (d & 255) * (1 - k)); }
+      }
+      const l = f.light[j];
+      if (l & 0xffffff) { const d = L[i]; L[i] = (255 << 24) | (Math.min(255, ((d >>> 16) & 255) + ((l >>> 16) & 255)) << 16) | (Math.min(255, ((d >>> 8) & 255) + ((l >>> 8) & 255)) << 8) | Math.min(255, (d & 255) + (l & 255)); }
+    }
+  }
+  return y + (top === Infinity ? dy0 : top);
+}
+function updateBosses(dt) {
+  for (const A of arenas) {
+    if (!A.locked && !A.cleared && state === "play" && !P.dead && P.x > A.x0 + 16 && P.x < A.x1) lockArena(A);
+    // ordinary enemies stay outside a sealed arena; only the boss's own minions are inside
+    if (A.locked) for (const e of enemies) if (e.alive && !e.minion && e.x > A.x0 - 30 && e.x < A.x1 + 30) e.x = e.x < (A.x0 + A.x1) / 2 ? A.x0 - 30 : A.x1 + 30;
+    if (A.kind === "gloop") updateGloop(A, dt); else updateEye(A, dt);
+  }
+  for (let i = hazards.length - 1; i >= 0; i--) {
+    const h = hazards[i];
+    h.t += dt; h.fx.update(dt);
+    const hcx = P.x + 6, feet = P.y + P.h;
+    if (h.kind === "spikes" && h.t > 0.04 && h.t < 0.52) {
+      const u = Math.min(1, (h.t - 0.04) / 0.44), front = h.ox + h.dir * h.reach * (1 - Math.pow(1 - u, 1.7));
+      if (Math.abs(hcx - front) < 11 && feet > h.floor - 16) hurt(h.fx.options.palette === ROOT_PAL ? "hit" : "ice", front);
+    }
+    if (h.kind === "strike" && h.t > 0.76 && h.t < 1.12 && Math.abs(hcx - h.x) < 16) hurt("hit", h.x);
+    if (h.fx.done()) hazards.splice(i, 1);
+  }
+}
+function heroVsBosses() {
+  if (state !== "play" || P.dead) return;
+  const hb = heroBox();
+  for (const A of arenas) {
+    const B = A.boss;
+    if (!A.locked || !bossHittable(B)) continue;
+    const bb = bossBox(B);
+    if (!box(hb, bb)) continue;
+    if (statusIs("electrified")) {
+      if (B.touchCool <= 0) { spawn(zapHit, { x: P.x + 6, y: P.y + P.h / 2 }); damageBoss(A, 1, "zap", P.x + 6, P.y + P.h / 2); B.touchCool = 0.5; }
+      P.vx = (P.x + 6 < B.x ? -1 : 1) * 160;
+      continue;
+    }
+    if (P.vy > 40 && P.y + P.h - bb[1] < 12 && B.touchCool <= 0) {
+      damageBoss(A, 2, "stomp", P.x + 6, bb[1]);
+      P.vy = down(...JUMP) ? -420 : -300; B.touchCool = 0.25;
+      continue;
+    }
+    hurt(B.kind === "gloop" ? "ice" : "curse", B.x);
+  }
+}
+function drawBosses() {
+  for (const A of arenas) {
+    if (A.x1 < cam - 80 || A.x0 > cam + W + 80) continue;
+    if (A.kind === "gloop") drawGloop(A); else drawEye(A);
+    if (A.locked) for (const wx of [A.x0 - 4, A.x1 + 2]) {
+      // the sealed arena's rune walls: a shimmering column of light
+      const [cr, cg, cb] = A.kind === "gloop" ? [90, 190, 255] : [150, 90, 255];
+      for (let y = A.floor - 150; y < A.floor; y++) {
+        const k = 0.45 + 0.35 * Math.sin(y * 0.35 - time * 9);
+        for (let dx = -2; dx <= 2; dx++) {
+          const px = Math.round(wx + dx) - frame.ox, py = Math.round(y) - frame.oy;
+          if (px < 0 || py < 0 || px >= W || py >= H) continue;
+          const kk = k * (1 - Math.abs(dx) / 3), i = py * W + px, v = frame.light[i];
+          frame.light[i] = (255 << 24) | (Math.min(255, ((v >>> 16) & 255) + cb * kk) << 16) | (Math.min(255, ((v >>> 8) & 255) + cg * kk) << 8) | Math.min(255, (v & 255) + cr * kk);
+          if (dx === 0 && (y + Math.floor(time * 20)) % 9 === 0) frame.color[i] = 0xffffffff;
+        }
+      }
+    }
+  }
+  for (const h of hazards) h.fx.draw(frame);
+}
+function bossBar(g) {
+  const A = lockedArena(); if (!A) return;
+  const B = A.boss; if (B.state === "dead") return;
+  const x = 80, y = 168, w = 160, fill = Math.round((w - 2) * B.hp / B.max);
+  g.fillStyle = "#000"; g.fillRect(x - 1, y - 1, w + 2, 7);
+  g.fillStyle = "#2a1426"; g.fillRect(x, y, w, 5);
+  g.fillStyle = B.kind === "gloop" ? "#4fbcf5" : "#b04ae0"; g.fillRect(x + 1, y + 1, fill, 3);
+  g.fillStyle = B.kind === "gloop" ? "#c8f0ff" : "#f0c0ff"; g.fillRect(x + 1, y + 1, fill, 1);
+  const name = B.name.toUpperCase(), tw = textWidth(name, "mini"), tx = Math.round(160 - tw / 2), ty = y - 8;
+  rasterText(name, "mini", (gx, gy) => { g.fillStyle = "#000"; g.fillRect(tx + gx, ty + gy + 1, 1, 1); });
+  rasterText(name, "mini", (gx, gy) => { g.fillStyle = "#ece4f4"; g.fillRect(tx + gx, ty + gy, 1, 1); });
+}
+
 // ---------------- hero ----------------
 const GRAV = 1000, RUN = 118, ACC = 950, FRIC = 1200, JUMPV = 390;
 function updateHero(dt) {
@@ -806,6 +1245,7 @@ function updateHero(dt) {
         P.attackHit = true;
         const reach = heavy ? 34 : 26, hb = [P.face > 0 ? P.x + P.w : P.x - reach, P.y + 3, reach, P.h - 4];
         for (const e of enemies) if (e.alive && box(hb, enemyBox(e))) { const b = enemyBox(e); spawn(hitSpark, { x: e.x, y: b[1] + b[3] / 2, flip: P.face < 0 }); killEnemy(e, "slash"); }
+        for (const A of arenas) if (A.locked && bossHittable(A.boss) && box(hb, bossBox(A.boss))) { const b = bossBox(A.boss); damageBoss(A, heavy ? 2 : 1, "slash", P.face > 0 ? b[0] + 4 : b[0] + b[2] - 4, b[1] + b[3] / 2); }
       }
     }
   }
@@ -883,12 +1323,12 @@ function updateWorld(dt) {
     f.hit = true; spawnX = f.x + 10;
     spawn(collectBurst, { x: f.x, y: f.y - 8, palette: ["#061412", "#0b2f2b", "#12594a", "#1f8f4f", "#47c752", "#a6f06a", "#f0ffd2", "#ffffff"] });
   }
-  if (!chest.opened && playing && box(hb, [chest.x - 14, chest.y - 18, 28, 18])) {
+  if (!chest.opened && !chest.hidden && playing && box(hb, [chest.x - 14, chest.y - 18, 28, 18])) {
     chest.opened = true; state = "win"; winT = 0; score += 500;
-    say("Stage clear", "Press R or Restart to play again", 0);
+    say("Level 1 clear", "Press R or Restart to play again", 0);
   }
   if (chest.opened) chest.fx.update(dt);
-  if (state === "win") { winT += dt; if (winT > 1.3 && !quest) quest = createFx(questComplete, { x: 0, y: 0, text: "STAGE CLEAR" }); }
+  if (state === "win") { winT += dt; if (winT > 1.3 && !quest) quest = createFx(questComplete, { x: 0, y: 0, text: "LEVEL 1 CLEAR" }); }
   if (quest) { quest.update(dt); quest.options.x = Math.round(cam) + 160; quest.options.y = OY + 58; }
   // entering an area
   const a = areaOfX(P.x + 6);
@@ -902,7 +1342,9 @@ function update(dt) {
   updateHero(dt);
   jumpPressed = castPressed = swapPressed = heavyPressed = rollPressed = dashPressed = magicPressed = false;
   updateEnemies(dt);
+  updateBosses(dt);
   heroVsEnemies();
+  heroVsBosses();
   updateProjectiles(dt);
   updateWorld(dt);
   for (let i = oneShots.length - 1; i >= 0; i--) { oneShots[i].update(dt); if (oneShots[i].done()) oneShots.splice(i, 1); }
@@ -915,6 +1357,7 @@ function update(dt) {
       iris.swapped = true;
       const hp = Math.max(P.hp, 3);
       P = null; resetHero(spawnX); P.hp = hp; P.inv = 1.2;
+      for (const A of arenas) if (A.locked && !A.cleared) resetArena(A);
       cam = Math.max(0, Math.min(COLS * T - W, P.x - 150));
       projectiles = projectiles.filter((p) => p.kind !== "shot");
     }
@@ -922,7 +1365,8 @@ function update(dt) {
     if (iris.fx.done()) iris = null;
   }
 
-  const target = Math.max(0, Math.min(COLS * T - W, P.x + 6 - 150 + P.face * 22));
+  const arena = lockedArena();
+  const target = Math.max(0, Math.min(COLS * T - W, arena ? (arena.x0 + arena.x1) / 2 - W / 2 : P.x + 6 - 150 + P.face * 22));
   cam += (target - cam) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt);
 
@@ -1062,6 +1506,7 @@ function hud(g) {
   text(g, "x" + coinCount, 13, 27, "#ffe066");
   const s = String(score).padStart(5, "0");
   text(g, s, W - 6 - s.length * 4, 7, "#ece4f4");
+  bossBar(g);
 }
 
 // ---------------- hamster hero ----------------
@@ -1223,8 +1668,9 @@ function render() {
   for (const co of coins) if (vis(co.x, 24)) blit(frame, co.b, time + co.ph, co.x, co.y + 20);
   for (const h of hearts) if (vis(h.x, 24)) blit(frame, h.b, time, h.x, h.y);
   for (const p of potions) if (vis(p.x, 24)) blit(frame, p.b, time, p.x, p.y);
-  if (vis(chest.x, 90)) chest.fx.draw(frame);
+  if (vis(chest.x, 90) && !chest.hidden) chest.fx.draw(frame);
   for (const e of enemies) if (e.alive && vis(e.x, 60)) { if (e.frozenT > 0) blit(frame, e.ice.b, e.ice.t, e.ice.x, e.ice.y); else blit(frame, enemyBake(e), e.t, e.x, e.y); }
+  drawBosses();
 
   if (P.dead) { if (IS_WARRIOR && WARRIOR_SPRITES) drawHamster(frame); else P.dead.fx.draw(frame); }
   else if (!(iris && !iris.swapped && iris.fx.t > 1.1)) {
@@ -1292,7 +1738,7 @@ function drawBolts() {
 
 // ---------------- loop ----------------
 let last = performance.now(), fpsAcc = 0, fpsN = 0;
-window.__lantern = { get P() { return P; }, get enemies() { return enemies; }, teleport(x, y) { P.x = x; P.y = y != null ? y : Math.min(surfaceAt(x + 6), 144) - 40; P.vy = 0; cam = Math.max(0, x - 150); }, setStatus(k) { setStatus(k); }, perf: { ms: 0 }, get state() { return state; }, get projectiles() { return projectiles; }, kill(n) { P.hp = n; }, face(d) { P.face = d; }, get cam() { return cam; } };
+window.__lantern = { get P() { return P; }, get enemies() { return enemies; }, teleport(x, y) { P.x = x; P.y = y != null ? y : Math.min(surfaceAt(x + 6), 144) - 40; P.vy = 0; cam = Math.max(0, x - 150); }, setStatus(k) { setStatus(k); }, perf: { ms: 0 }, get state() { return state; }, get projectiles() { return projectiles; }, kill(n) { P.hp = n; }, face(d) { P.face = d; }, get cam() { return cam; }, get arenas() { return arenas; }, get hazards() { return hazards; }, get chest() { return chest; }, hitBoss(i, n, how) { return damageBoss(arenas[i], n, how || "slash", arenas[i].boss.x, arenas[i].boss.y || arenas[i].boss.cy); } };
 function loop(now) {
   const dt = Math.max(0, Math.min(1 / 30, (now - last) / 1000)); last = now;
   const t0 = performance.now();
@@ -13217,6 +13663,1861 @@ function streaks(p, t, S, C, front) {
 __def(__e, "meta", () => meta);
 __def(__e, "drawBack", () => drawBack);
 __def(__e, "draw", () => draw);
+
+
+},
+function(__e){
+// The eruption recipe (a frost line racing ahead, each spike punching up white with a spray of shards, a puff
+// and a glint, the floor frosting behind) is adapted from Sprite Fusion's open-source ice
+// (https://www.spritefusion.com/pixel-art-vfx/ice), MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Bits, Lights, P, B, Rng, fit, sparkle, clamp, smooth, seg, ease, rand, TAU, WHITE} = __r(1);
+const {Panes, endBy, blade, splitPoly} = __r(37);
+
+const meta = {
+  name: "Ice spikes",
+  desc: "A frost line races along the floor and clusters of jagged ice blades burst up behind it in a rising wave, glint, flash white together and shatter into toppling shards.",
+  tags: ["ice", "spikes", "ground", "wave", "directional", "magic", "one-shot"],
+  size: [264, 112],
+  origin: [24, 96],
+  duration: 3,
+  loop: false,
+  fps: 30,
+  bg: "ground",
+  options: { palette: ["#151a3d", "#212f6b", "#2c58aa", "#3a8bd8", "#62c8f4", "#a6ecff", "#dcfbff", "#ffffff"], reach: 172, height: 56, seed: 3 },
+};
+
+const START = 0.04, RUN = 0.44; // the frost line runs out
+const SHIMMER = 0.74; // a glint runs down the line
+const TREMBLE = 1.2, FLASH = 1.36, SHATTER = 1.42; // they shiver, flash white together and break
+const MELT = 1.75; // the frost goes, oldest first
+
+function create(o) {
+  const C = fit(o.palette, 8), R = new Rng(o.seed), REACH = o.reach, floor = () => 0;
+  const ps = new Particles({ rng: R, ground: floor, sparks: [C[7], C[6], C[5], C[4]], haze: C[5] });
+  const bits = new Bits({ ground: floor }), lights = new Lights();
+  const splinter = (x, y, vx, n) => {
+    for (let i = 0; i < n; i++) bits.add({ kind: B.SHARD, x: x + R.range(-2, 2), y: y - 1, vx: vx * 0.5 + R.range(-45, 45), vy: -R.range(30, 100), g: 0.8, drag: 0.6, bounce: 0.35, life: R.range(0.4, 0.75), a: R.range(0, TAU), va: R.range(-18, 18), s: R.range(1.2, 2.4), c: C[R.int(4, 7)] });
+  };
+  const panes = new Panes({
+    ground: floor,
+    onCrumble: (q) => {
+      splinter(q.x, 0, 0, 3);
+      ps.spawn(P.VAPOUR, q.x, -1, R.range(-12, 12), -R.range(2, 8), R.range(0.4, 0.7), C[6], R.range(1.4, 2.2));
+    },
+    onLand: (q, x, y, v) => {
+      if (v < 110) return;
+      ps.spawn(P.VAPOUR, x, y - 1, R.range(-20, 20), -R.range(2, 8), R.range(0.4, 0.7), C[6], R.range(1.4, 2.4));
+      splinter(x, y, q.vx, 3);
+      if (R.chance(0.3)) ps.spawn(P.STAR, x, y - 2, 0, -5, R.range(0.2, 0.4), WHITE, R.range(0.8, 1.6));
+    },
+  });
+  const front = (t) => REACH * (1 - Math.pow(1 - seg(t, START, START + RUN), 1.7));
+  const reachedAt = (x) => START + RUN * (1 - Math.pow(1 - clamp(x / REACH), 1 / 1.7));
+
+  // clusters along the line: a main blade leaning into the wave and two to four splayed round it, heights
+  // swelling to a crest past the middle and falling off at the end
+  const env = (q) => 0.28 + 0.72 * Math.exp(-(((q - 0.64) / 0.3) ** 2));
+  const clusters = [];
+  for (let x = 10; x < REACH - 2; x += R.range(20, 26)) {
+    const q = x / REACH, H = o.height * env(q) * R.range(0.88, 1.06), W = clamp(H * 0.36, 5, 14), lean = H * R.range(0.2, 0.34);
+    // a big blade leaning into the wave, a smaller one behind it leaning further, a stub in front of its foot
+    const list = [
+      { dx: W * R.range(0.35, 0.6), h: H * R.range(0.5, 0.7), w: W * 0.7, lean: H * R.range(0.4, 0.6), back: true, delay: R.range(0.02, 0.05), jag: R.chance(0.5) ? R.range(0.35, 0.6) : -1 },
+      { dx: 0, h: H, w: W, lean, back: false, delay: 0, jag: R.chance(0.7) ? R.range(0.32, 0.58) : -1, main: true },
+    ];
+    if (H > 14) list.push({ dx: -W * R.range(0.35, 0.55), h: H * R.range(0.24, 0.4), w: W * 0.55, lean: -H * R.range(0, 0.12), back: false, delay: R.range(0.03, 0.07), jag: -1 });
+    clusters.push({ x, q, H, W, blades: list, main: list[1], t0: reachedAt(x) + 0.012, up: false });
+  }
+  const crest = clusters.reduce((a, c) => (c.H > a.H ? c : a), clusters[0]);
+  let t = 0, broke = false, trembled = false;
+
+  // a blade's base, tip and look right now
+  const pose = (c, b) => {
+    const g = ease.outBack(clamp((t - c.t0 - b.delay) / 0.09), 2.2), x = c.x + b.dx;
+    return { g, x, tx: x + b.lean * g, ty: -b.h * g, white: t - c.t0 - b.delay < 0.03 || (t >= FLASH && t < SHATTER) };
+  };
+  const drawClusters = (p) => {
+    if (t >= SHATTER) return;
+    for (const pass of [0, 1, 2])
+      for (const c of clusters) {
+        if (t < c.t0) continue;
+        const jx = t >= TREMBLE && t < FLASH ? ((Math.floor(t * 40) + Math.round(c.x)) % 2 ? 1 : 0) : 0;
+        for (const b of c.blades) {
+          if ((pass === 0) !== b.back || (pass === 1) !== !!b.main) continue;
+          const s = pose(c, b);
+          if (s.g <= 0) continue;
+          const gl = (t - SHIMMER - c.q * 0.34) / 0.2;
+          blade(p, s.x + jx, 0, s.tx + jx, s.ty, b.w, C, { white: s.white, jag: b.jag, dim: b.back ? 1 : 0, glint: gl >= 0 && gl <= 1 ? gl : -1 });
+        }
+        if (pass === 2) {
+          // light: a pop at the base as it bursts, a cold glow up its length while it stands
+          const pop = clamp(1 - (t - c.t0) / 0.15), wh = t >= FLASH;
+          p.glow(c.x + c.main.lean * 0.4, -c.H * 0.45, c.H * 0.9 + 10, C[4], (0.16 + 0.42 * pop + (wh ? 0.4 : 0)) * (0.85 + 0.15 * Math.sin(t * 3 + c.x)));
+          if (pop > 0) p.glow(c.x, -2, 14, WHITE, 0.55 * pop);
+        }
+      }
+  };
+
+  // the frosted floor: a crust with rime tufts, a bloom under the surface, a white-hot head while it runs
+  const drawFrost = (p) => {
+    const fr = front(t);
+    for (let x = -3; x <= Math.min(fr, REACH + 6); x++) {
+      const q = clamp(x / REACH), age = t - reachedAt(Math.max(0, x)), a = 1 - smooth(MELT + q * 0.35, MELT + q * 0.35 + 0.6, t);
+      if (a <= 0 || age < 0) continue;
+      const h = rand(x, 17), grow = smooth(0, 0.3, age), head = fr - x < 3 && fr < REACH;
+      p.dot(x, 0, head || age < 0.06 || h < 0.3 ? WHITE : C[6], a);
+      const L = h < 0.45 ? Math.round(grow * (1 + rand(x, 5) * 2.6)) : 0;
+      for (let j = 1; j <= L; j++) p.dot(x, -j, j === L ? WHITE : C[5], a);
+      if (L > 1 && rand(x, 9) < 0.5) p.dot(x + 1, -L + 1, C[6], a);
+      const D = grow * (2 + rand(x, 11) * 4) * (1 - q * 0.3);
+      for (let j = 1; j <= D; j++) p.dot(x, j, rand(x * 31 + j, 7) < 0.06 ? WHITE : j < 2 ? C[5] : j < 4 ? C[4] : C[3], a * (1.1 - j / (D + 1)));
+      if (head) p.dot(x, -1, WHITE);
+    }
+    if (fr < REACH && t > START) {
+      p.glow(fr, -2, 16, C[6], 0.6);
+      p.glow(fr, -1, 7, WHITE, 0.6);
+    }
+  };
+
+  const breakBlade = (c, b) => {
+    const s = pose(c, b), ax = s.tx - s.x, ay = s.ty, L = Math.hypot(ax, ay) || 1, nx = -ay / L, ny = ax / L, hw = b.w / 2;
+    const tri = [[s.x - nx * hw, -ny * hw], [s.tx, s.ty], [s.x + nx * hw, ny * hw]];
+    const ang = Math.atan2(ay, ax) + Math.PI / 2;
+    let parts = [tri];
+    if (b.h > 9) parts = parts.flatMap((poly) => splitPoly(poly, s.x + ax * 0.4, ay * 0.4, ang));
+    if (b.h > 22) parts = parts.flatMap((poly) => (poly.some(([, y]) => y < ay * 0.5) ? splitPoly(poly, s.x + ax * 0.72, ay * 0.72, ang) : [poly]));
+    for (const part of parts) {
+      let mx = 0, my = 0;
+      for (const [x, y] of part) (mx += x), (my += y);
+      (mx /= part.length), (my /= part.length);
+      const up = clamp(-my / 40);
+      panes.add({
+        pts: part.map(([x, y]) => [x - mx, y - my]), x: mx, y: my, vx: R.range(-25, 60), vy: -R.range(40, 130) * (0.5 + up), a: 0, va: R.range(-8, 8), f: R.range(-0.7, 0.7), vf: R.range(-6, 6),
+        lit: b.back ? 0.45 : 0.75, g: 0.9, drag: 0.6, bounce: 0.3, solid: true, ridge: Math.atan2(ay, ax), brittle: b.h > 30 ? 2 : 1, crumble: R.range(0.12, 0.4), life: R.range(1, 1.4),
+      });
+    }
+    for (let i = 0; i < 2 + b.h / 7; i++) {
+      const u = R.next();
+      bits.add({ kind: R.chance(0.15) ? B.CHUNK : B.SHARD, x: s.x + ax * u + R.range(-1.5, 1.5), y: ay * u, vx: R.range(-60, 90), vy: -R.range(60, 230), g: 0.9, drag: 0.6, bounce: 0.3, life: R.range(0.7, 1.3), a: R.range(0, TAU), va: R.range(-20, 20), s: R.range(1.2, 3.2), c: C[R.int(4, 7)], ramp: [C[1], C[3], C[4], C[6], C[7]] });
+    }
+  };
+
+  return {
+    update(dt) {
+      t += dt;
+      // the cast: a puff and a spray where the line starts
+      if (t - dt <= START && t > START) {
+        for (let i = 0; i < 4; i++) ps.spawn(P.VAPOUR, R.range(0, 6), -R.range(0, 3), R.range(10, 60), -R.range(2, 12), R.range(0.4, 0.7), C[6], R.range(2, 3.2));
+        lights.add(4, -4, 26, C[5], 0.6, 0.25);
+      }
+      // the running front throws frost: streaks along the floor, motes, vapour
+      const fr = front(t);
+      if (t > START && fr < REACH - 1) {
+        if (R.chance(0.5)) ps.spawn(P.STREAK, fr - R.range(4, 12), -R.range(1, 3), R.range(40, 80), -R.range(0, 6), R.range(0.08, 0.14), R.chance(0.5) ? C[6] : WHITE);
+        if (R.chance(0.3)) ps.spawn(P.FLAKE, fr, -1, R.range(10, 50), -R.range(20, 70), R.range(0.5, 0.9), R.chance(0.5) ? WHITE : C[6], R.range(0.5, 1.2));
+        if (R.chance(0.12)) ps.spawn(P.VAPOUR, fr, -R.range(0, 3), R.range(20, 60), -R.range(2, 10), R.range(0.4, 0.7), C[6], R.range(1.6, 2.8));
+      }
+      for (const c of clusters) {
+        if (c.up || t < c.t0) continue;
+        c.up = true;
+        // each cluster bursts up: shards sprayed forward, a puff, motes, a glint at the tip once it stands
+        const big = c === crest, n = 3 + Math.round(c.H / 8);
+        for (let i = 0; i < n; i++) {
+          const a = -Math.PI / 2 + R.range(-1.1, 1.0), sp = R.range(60, 190) * (0.45 + c.H / 44);
+          bits.add({ kind: B.SHARD, x: c.x + R.range(-3, 3), y: -1, vx: Math.cos(a) * sp + 25, vy: Math.sin(a) * sp, g: 0.8, drag: 0.6, bounce: 0.3, life: R.range(0.6, 1.1), a: R.range(0, TAU), va: R.range(-18, 18), s: R.range(1.2, 3), c: C[R.int(5, 7)] });
+        }
+        ps.spawn(P.VAPOUR, c.x, -1, R.range(-10, 40), -R.range(2, 10), R.range(0.5, 0.9), C[6], R.range(2.2, 3.4) * (0.6 + c.H / 60));
+        for (let i = 0; i < 2; i++) ps.spawn(P.FLAKE, c.x + R.range(-4, 4), -R.range(2, c.H * 0.5), R.range(-20, 40), -R.range(20, 60), R.range(0.6, 1.1), R.chance(0.5) ? WHITE : C[6], R.range(0.5, 1.3));
+        if (c.H > 16) ps.spawn(P.STAR, c.x + c.main.lean, -c.H * 0.96, 0, -4, R.range(0.3, 0.5), WHITE, R.range(1.4, 2.6), 0.08);
+        lights.add(c.x, -c.H * 0.4, 16 + c.H * 0.6, C[5], 0.5, 0.18);
+        if (big) {
+          lights.add(c.x, -c.H * 0.5, 54, WHITE, 0.5, 0.14);
+          for (let i = 0; i < 4; i++) ps.spawn(P.VAPOUR, c.x + R.range(-6, 6), -R.range(0, 4), R.range(-40, 60), -R.range(4, 16), R.range(0.6, 1), C[6], R.range(3, 4.5));
+        }
+      }
+      // while they stand: glints wink on the blades
+      if (t > START + RUN && t < TREMBLE && R.chance(0.09)) {
+        const c = R.pick(clusters), b = R.pick(c.blades), s = pose(c, b), u = R.range(0.3, 0.95);
+        ps.spawn(P.STAR, s.x + (s.tx - s.x) * u, s.ty * u, 0, -3, R.range(0.25, 0.5), R.chance(0.6) ? WHITE : C[6], R.range(0.6, 2));
+      }
+      // they shiver: chips fall
+      if (!trembled && t >= TREMBLE) {
+        trembled = true;
+        for (const c of clusters)
+          for (let i = 0; i < 2; i++) bits.add({ kind: B.SHARD, x: c.x + R.range(-4, 4), y: -R.range(4, c.H * 0.8), vx: R.range(-20, 20), vy: -R.range(0, 30), g: 0.8, drag: 0.5, bounce: 0.3, life: R.range(0.3, 0.6), a: R.range(0, TAU), va: R.range(-18, 18), s: R.range(1, 1.8), c: C[R.int(5, 7)] });
+      }
+      if (!broke && t >= SHATTER) {
+        broke = true;
+        // all at once: every blade breaks into toppling pieces, splinters and ice dust, light along the line
+        for (const c of clusters) {
+          for (const b of c.blades) breakBlade(c, b);
+          for (let i = 0; i < 2; i++) ps.spawn(P.VAPOUR, c.x + R.range(-6, 6), -R.range(1, 8), R.range(-30, 50), -R.range(4, 18), R.range(0.6, 1.1), C[6], R.range(2.4, 4) * (0.7 + c.H / 60));
+          if (R.chance(0.7)) ps.spawn(P.STAR, c.x + R.range(-6, 6), -R.range(4, c.H), R.range(-10, 10), -R.range(6, 20), R.range(0.4, 0.8), R.chance(0.5) ? WHITE : C[6], R.range(1, 2.2));
+          for (let i = 0; i < 2; i++) ps.spawn(P.FLAKE, c.x + R.range(-6, 6), -R.range(4, c.H), R.range(-30, 60), -R.range(30, 90), R.range(0.9, 1.5), R.chance(0.6) ? WHITE : C[6], R.range(0.5, 1.5));
+          lights.add(c.x, -c.H * 0.5, 22 + c.H, WHITE, 0.45, 0.12);
+        }
+        for (let i = 0; i < 5; i++) lights.add((REACH * (i + 0.5)) / 5, -18, 40, C[4], 0.4, 0.5);
+      }
+      // the shatter's dust settles; glints on the debris
+      if (broke && t < SHATTER + 0.8 && R.chance(0.1) && bits.list.length) {
+        const b = R.pick(bits.list);
+        ps.spawn(P.STAR, b.x, b.y - 1, 0, -3, R.range(0.2, 0.4), R.chance(0.5) ? WHITE : C[6], R.range(0.6, 1.5));
+      }
+      ps.update(dt);
+      bits.update(dt);
+      panes.update(dt);
+      lights.update(dt);
+      endBy(t, meta.duration, ps, bits, panes);
+    },
+    drawBack(p) {
+      drawFrost(p);
+      ps.draw(p, "back");
+    },
+    draw(p) {
+      drawClusters(p);
+      // the cold light the frosted floor gives off
+      const k = (1 - smooth(MELT, MELT + 0.9, t)) * smooth(START, START + 0.3, t), fr = front(t);
+      for (let i = 0; i < 6; i++) p.glow((fr * (i + 0.5)) / 6, -3, 26, C[4], 0.15 * k);
+      if (t >= FLASH && t < SHATTER + 0.1) for (const c of clusters) sparkle(p, c.x + c.main.lean, -c.H, 6 * (1 - clamp((t - FLASH) / 0.16)), C[6], C[4], 0.4);
+      panes.draw(p, C);
+      bits.draw(p);
+      ps.draw(p, "front");
+      lights.draw(p);
+    },
+  };
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
+
+
+},
+function(__e){
+// The pop recipe (a gathering, a white flash with a ring and flares, twinkling motes that linger and fade) is
+// adapted from Sprite Fusion's open-source sparkle (https://www.spritefusion.com/pixel-art-vfx/sparkle),
+// MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Lights, P, Rng, fit, flare, sparkle, clamp, smooth, seg, ease, TAU, WHITE} = __r(1);
+const {flakeDesign, snowflake, endBy} = __r(37);
+
+const meta = {
+  name: "Snowflake burst",
+  desc: "A cold pop: frost gathers and flashes white in a ring, then crisp six-armed snowflakes spin out, slow, twinkle and drift down to settle and melt.",
+  tags: ["ice", "snow", "snowflake", "burst", "magic", "one-shot"],
+  size: [140, 120],
+  origin: [70, 106],
+  duration: 3.2,
+  loop: false,
+  fps: 30,
+  bg: "ground",
+  options: { palette: ["#151a3d", "#212f6b", "#2c58aa", "#3a8bd8", "#62c8f4", "#a6ecff", "#dcfbff", "#ffffff"], count: 9, seed: 8 },
+};
+
+const POP = 0.16, CY = -48;
+
+function create(o) {
+  const C = fit(o.palette, 8), R = new Rng(o.seed), floor = () => 0;
+  const ps = new Particles({ rng: R, ground: floor, sparks: [C[7], C[6], C[5], C[4]], haze: C[5] });
+  const lights = new Lights();
+  // the flakes: two big, a few middling, the rest small; small ones fly further
+  const flakes = [];
+  const SIZES = [2, 0, 1, 0, 2, 0, 1, 0, 1];
+  for (let i = 0; i < o.count; i++) {
+    const z = SIZES[i % SIZES.length], r = z === 2 ? R.range(9.5, 11.5) : z === 1 ? R.range(6, 7.5) : R.range(3, 4.5);
+    const a = (i / o.count) * TAU + R.range(-0.3, 0.3) + 0.4, sp = R.range(80, 120) * (1.4 - r / 14);
+    flakes.push({
+      x: 0, y: CY, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.85 - 20, r, rot: R.range(0, TAU), w0: R.sign() * R.range(7, 12), w1: R.sign() * R.range(0.4, 1),
+      d: flakeDesign(R), life: R.range(2.1, 2.8), age: 0, ph: R.range(0, TAU), tw: R.range(0.5, 0.85), tw0: R.range(0.15, 0.6), rest: false, popped: false,
+    });
+  }
+  let t = 0, popped = false;
+  const sz = (f) => f.r * Math.min(1, ease.outBack(clamp(f.age / 0.18), 2)) * Math.min(1, (f.life - f.age) / 0.35);
+
+  return {
+    update(dt) {
+      t += dt;
+      // the cold gathers: streaks of frost spiral in, snow motes drift in
+      if (t < POP - 0.03 && R.chance(0.8)) {
+        const a = R.range(0, TAU), D = R.range(22, 44), T = R.range(0.12, 0.16), v = (D * 3) / (Math.exp(3 * T) - 1);
+        ps.spawn(P.STREAK, Math.cos(a) * D, CY + Math.sin(a) * D, -Math.cos(a) * v, -Math.sin(a) * v, T, R.chance(0.5) ? C[6] : C[5]);
+      }
+      if (!popped && t >= POP) {
+        popped = true;
+        lights.add(0, CY, 44, WHITE, 0.8, 0.1);
+        lights.add(0, CY, 72, C[4], 0.5, 0.6);
+        // frost thrown out: streaking motes, snow, glints that come and go round it
+        for (let i = 0; i < 22; i++) {
+          const a = R.range(0, TAU), sp = R.range(80, 150);
+          ps.spawn(P.MOTE, 0, CY, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.25, 0.5), R.chance(0.5) ? C[6] : C[5], R.range(0.6, 1));
+        }
+        for (let i = 0; i < 18; i++) {
+          const a = R.range(-Math.PI, 0.2), sp = R.range(30, 110);
+          ps.spawn(P.FLAKE, 0, CY, Math.cos(a) * sp, Math.sin(a) * sp, R.range(1, 1.6), R.chance(0.6) ? WHITE : C[6], R.range(0.5, 1.5));
+        }
+        for (let i = 0; i < 12; i++) {
+          const a = R.range(0, TAU), d = R.range(10, 44);
+          ps.spawn(P.STAR, Math.cos(a) * d, CY + Math.sin(a) * d * 0.85, 0, R.range(2, 6), R.range(0.3, 0.6), R.chance(0.5) ? WHITE : C[6], R.range(0.8, 2.2), R.range(0.08, 1.6));
+        }
+      }
+      if (popped)
+        for (const f of flakes) {
+          f.age += dt;
+          if (f.age >= f.life) continue;
+          if (!f.rest) {
+            f.vx -= f.vx * 2.8 * dt;
+            f.vy -= f.vy * 2.8 * dt - 26 * dt;
+            f.x += f.vx * dt + Math.sin(t * 1.8 + f.ph) * 5 * dt;
+            f.y += f.vy * dt;
+            f.rot += (f.w1 + (f.w0 - f.w1) * Math.exp(-f.age * 2.5)) * dt;
+            // it settles on the floor, flat and still, and melts there
+            if (f.y > -sz(f) * 0.3) {
+              f.rest = true;
+              f.y = -1;
+              f.life = Math.min(f.life, f.age + 0.6);
+            }
+          }
+          // a melted or spent flake goes out with a glint or two
+          if (!f.popped && f.life - f.age < 0.1) {
+            f.popped = true;
+            for (let i = 0; i < 2; i++) ps.spawn(P.STAR, f.x + R.range(-2, 2), f.y + R.range(-2, 2), R.range(-6, 6), -R.range(2, 8), R.range(0.2, 0.4), R.chance(0.5) ? WHITE : C[6], R.range(0.8, 1.6));
+          }
+        }
+      ps.update(dt);
+      lights.update(dt);
+      endBy(t, meta.duration, ps);
+    },
+    draw(p) {
+      // the gathering: a tiny flake spins up at the heart, faster and brighter
+      if (t < POP) {
+        const k = t / POP;
+        snowflake(p, 0, CY, 1 + 3.2 * k * k, t * 20, flakes[0].d, C, { hot: k });
+        p.glow(0, CY, 8 + 14 * k, C[5], 0.3 + 0.4 * k);
+      }
+      // the pop: a white flash, a flare and a ring of frost running out
+      const q = t - POP;
+      if (q >= 0 && q < 0.4) {
+        if (q < 0.07) p.circle(0, CY, 6 * (1 - q / 0.07) + 1, WHITE);
+        flare(p, 0, CY, 28 * Math.pow(Math.max(0, 1 - q / 0.26), 1.5), 1 - q / 0.26, C);
+        const e = ease.outCubic(q / 0.4), r = 5 + 34 * e;
+        p.ring(0, CY, r, Math.max(1, 2.4 * (1 - e)), q < 0.08 ? WHITE : q < 0.2 ? C[6] : C[5], 1.15 - e);
+        p.glowRing(0, CY, r, 5, C[5], 0.4 * (1 - e));
+      }
+      // the cold light left where it burst, fading
+      if (popped) p.glow(0, CY, 46, C[4], 0.3 * (1 - smooth(POP, POP + 1.6, t)));
+      // the flakes: spinning out, twinkling now and then, landing and melting
+      for (const f of flakes) {
+        if (!popped || f.age >= f.life) continue;
+        const r = sz(f), tw = Math.max(0, Math.sin(((f.age - f.tw0) / f.tw) * TAU)) ** 8 * (f.age > f.tw0 ? 1 : 0);
+        if (f.rest) {
+          // lying on the floor: flattened to a sparkling smear that shrinks away
+          const L = Math.max(1, Math.round(r * 1.2 * ((f.life - f.age) / 0.6)));
+          for (let i = -L; i <= L; i++) p.px(f.x + i, -1, Math.abs(i) === L ? C[5] : i === 0 ? WHITE : C[6]);
+          p.glow(f.x, -1, 3 + L, C[4], 0.3);
+          continue;
+        }
+        snowflake(p, f.x, f.y, r, f.rot, f.d, C, { hot: Math.max(tw, 1 - clamp(f.age / 0.12)) });
+        p.glow(f.x, f.y, 6 + r * 1.4, C[4], 0.12);
+        if (tw > 0.5) flare(p, f.x, f.y, (3 + r * 0.7) * tw, tw, C);
+      }
+      ps.draw(p);
+      lights.draw(p);
+    },
+  };
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
+
+
+},
+function(__e){
+// The stepped leader, the stroke flicker, the cooling channel and the scorch follow Sprite Fusion's open-source
+// lightning (https://www.spritefusion.com/pixel-art-vfx/lightning), MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Lights, P, Rng, fit, sparkle, clamp, smooth, ease, rand, rng, TAU, WHITE, hex, mix} = __r(1);
+const {VOLT, PLASMA, SOOT, SOOT2, zigzag, bend, stroke, crackle, trace, scorch, heat} = __r(39);
+
+const meta = {
+  name: "Lightning strike",
+  desc: "A targeted strike: a sigil charges on the floor, the scene darkens, a thick bolt slams into it, arcs race out along the cracks it splits, the channel crumbles to a scorch.",
+  tags: ["lightning", "electric", "strike", "spell", "target", "impact", "ground", "one-shot"],
+  size: [240, 264],
+  origin: [120, 228],
+  duration: 3,
+  loop: false,
+  fps: 30,
+  bg: "ground",
+  options: { palette: VOLT, sparks: PLASMA, seed: 5 },
+};
+
+const W = 120, TOP = -224, RX = 28, SY = 0.22, REACH = 52, LEAD0 = 0.48, STEPS = 9, MEET = -30;
+const STROKES = [{ t: 0.76, k: 1 }, { t: 1.04, k: 0.8 }, { t: 1.26, k: 0.55 }];
+const FLICK = [1, 0.72, 0.3, 0.95, 0.5, 0.8, 0.22];
+const level = (a) => (a < 0 ? 0 : FLICK[Math.floor(a * 30 + 1e-4)] ?? 0);
+const NIGHT = hex("#04030a"), DUST = hex("#6e6382"), ASH = hex("#5b5566"), STONE = ["#655b7a", "#4a4263", "#342d45"].map(hex);
+const S1 = STROKES[0].t;
+
+// the cracks the strike splits in the floor: Lichtenberg branches lying on the floor's face
+function cracks(R) {
+  const out = [];
+  const grow = (x, y, a, len, w, d, depth) => {
+    const pts = [[x, y, d]];
+    for (let s = 0; s < len; s += 1.5) {
+      a += R.range(-0.32, 0.32);
+      x += Math.cos(a) * 1.5;
+      y = clamp(y + Math.sin(a) * 0.45, 0, 5);
+      d += 1.5;
+      pts.push([x, y, d]);
+      if (depth < 2 && s > 3 && R.chance(0.09)) grow(x, y, a + R.sign() * R.range(0.5, 1.2), (len - s) * R.range(0.3, 0.6), w * 0.6, d, depth + 1);
+    }
+    out.push({ pts, w });
+  };
+  for (let i = 0; i < 6; i++) grow(R.range(-1, 1), R.range(0, 1), i % 2 ? R.range(-0.5, 0.7) : Math.PI + R.range(-0.7, 0.5), REACH * R.range(0.55, 1), 1, 0, 0);
+  return out;
+}
+
+// the sigil on the floor: a ring of dashes turning slowly, crosshair ticks, an inner ring and a heart; drawn in
+// from the front, charging brighter; half picks the far (behind) or near part
+function sigil(p, t, C, k, near) {
+  const reveal = clamp(t / 0.22), spin = t * 0.8, burnt = t > S1 ? t - S1 : -1;
+  if (burnt > 0.45) return;
+  const a0 = burnt < 0 ? 1 : burnt < 0.07 ? 1 : 1 - (burnt - 0.07) / 0.38, hot = burnt >= 0 && burnt < 0.07;
+  const on = (a) => Math.sin(a) >= 0 === near;
+  const from = (a) => Math.abs((((a - Math.PI / 2) % TAU) + TAU + Math.PI) % TAU - Math.PI) / Math.PI;
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * TAU + spin;
+    if (!on(a) || from(a) > reveal) continue;
+    for (const da of [0, 0.06, 0.12]) {
+      const x = Math.cos(a + da) * RX, y = Math.sin(a + da) * RX * SY;
+      p.dot(x, y, hot ? WHITE : near ? (k > 0.7 ? C[6] : C[5]) : k > 0.7 ? C[4] : C[3], a0);
+      if (near) p.dot(x, y + 1, hot ? C[6] : C[2], a0);
+    }
+    if (i % 3 === 0) p.glow(Math.cos(a) * RX, Math.sin(a) * RX * SY, 5, C[4], 0.3 * k * a0);
+  }
+  for (let j = 0; j < 4; j++) {
+    const a = spin * -0.5 + (j * TAU) / 4 + Math.PI / 4;
+    if (!on(a) || reveal < 1) continue;
+    p.line(Math.cos(a) * (RX - 5), Math.sin(a) * (RX - 5) * SY, Math.cos(a) * (RX + 5), Math.sin(a) * (RX + 5) * SY, hot ? WHITE : near ? C[6] : C[4], a0);
+  }
+  if (t > 0.3)
+    for (let a = 0; a < TAU; a += 0.09) {
+      if (!on(a)) continue;
+      p.dot(Math.cos(a) * 14, Math.sin(a) * 14 * SY, hot ? WHITE : near ? C[4] : C[2], a0 * clamp((t - 0.3) / 0.12));
+    }
+  if (near && burnt < 0) {
+    const pulse = 0.6 + 0.4 * Math.sin(t * (10 + 30 * k));
+    p.px(0, 0, k > 0.5 ? WHITE : C[6]);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, -1]]) p.px(dx, dy, C[5]);
+    p.glow(0, -1, 10 + 10 * k, C[5], 0.3 + 0.4 * k * pulse);
+  }
+}
+
+// keep forks on the canvas and above the floor
+function keep(b) {
+  const paths = [];
+  for (const q of b.paths) {
+    const pts = [];
+    for (const pt of q.pts) {
+      if (Math.abs(pt[0]) > W - 5 || pt[1] > -3 || pt[1] < TOP + 6) break;
+      pts.push(pt);
+    }
+    if (q.w >= 1 || pts.length > 3) paths.push({ w: q.w, pts: q.w >= 1 ? q.pts : pts });
+  }
+  return { paths };
+}
+
+function create(o) {
+  const C = fit(o.palette, 8), R = new Rng(o.seed), floor = () => 0;
+  const ps = new Particles({ rng: R, ground: floor, sparks: o.sparks }), hot = new Particles({ rng: R, ground: floor }), lights = new Lights();
+  const X0 = R.range(8, 18) * (R.chance(0.5) ? 1 : -1);
+  const main = keep(zigzag(R, X0, TOP, 0, -1, 0.17, 0.5)), trunk = main.paths[0].pts;
+  const drift = (dx) => (x, y) => [x + dx * Math.sin((Math.PI * y) / TOP), y];
+  const bolts = [main, bend({ paths: [{ pts: trunk, w: 1 }] }, drift(1.5)), bend({ paths: [{ pts: trunk, w: 1 }] }, drift(3))];
+  const chan = (i) => bolts[i].paths[0].pts, last = STROKES[STROKES.length - 1], end = chan(STROKES.length - 1);
+  const tree = cracks(R);
+  // the spent channel breaks up from the top down, each piece at its own moment
+  const gone = end.map(([, y], i) => last.t + 0.25 + 0.75 * (0.55 * rand(o.seed, i, 5) + 0.45 * (1 - y / TOP)));
+  let t = 0, struck = -1;
+  const now = () => {
+    for (let i = STROKES.length - 1; i >= 0; i--) if (t >= STROKES[i].t) return { i, s: STROKES[i], a: t - STROKES[i].t, k: level(t - STROKES[i].t) * STROKES[i].k };
+    return null;
+  };
+  const charge = () => clamp(t / S1) ** 1.5;
+  const heatAt = () => (struck < 0 ? 0 : Math.max(...STROKES.slice(0, struck + 1).map((s) => s.k * Math.pow(clamp(1 - (t - s.t) / 1.6), 1.4))));
+
+  return {
+    update(dt) {
+      t += dt;
+      for (const [i, s] of STROKES.entries()) {
+        if (struck >= i || t < s.t) continue;
+        struck = i;
+        const k = s.k;
+        lights.add(0, -50, 120, C[4], 0.55 * k, 0.4);
+        lights.add(0, -3, 24, WHITE, 0.5 * k, 0.1);
+        for (let j = 0; j < Math.round(44 * k); j++) {
+          const a = -Math.PI / 2 + R.range(-1.3, 1.3), sp = R.range(110, 320) * (0.65 + 0.35 * k);
+          ps.spawn(P.SPARK, R.range(-1.5, 1.5), -2, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.2, 0.55));
+        }
+        for (let j = 0; j < Math.round(12 * k); j++) {
+          const a = -Math.PI / 2 + R.range(-1.2, 1.2), sp = R.range(70, 220);
+          hot.spawn(P.SPARK, R.range(-2, 2), -1, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.5, 1));
+        }
+        for (let j = 0; j < Math.round(5 * k); j++) hot.spawn(P.EMBER, R.range(-4, 4), -2, R.range(-25, 25), -R.range(30, 80), R.range(0.8, 1.5));
+        for (let j = 0; j < Math.round(18 * k); j++) {
+          const a = -Math.PI / 2 + R.range(-1.1, 1.1), sp = R.range(50, 190);
+          ps.spawn(P.GRIT, R.range(-3, 3), -1, Math.cos(a) * sp, Math.sin(a) * sp, R.range(1, 1.5), R.pick(STONE), R.chance(0.35) ? 2 : 1);
+        }
+        for (let j = 0; j < 8; j++) ps.spawn(P.DUST, R.range(-3, 3), -1, R.sign() * R.range(30, 110), -R.range(4, 24), R.range(0.4, 0.8), DUST, R.range(1.5, 3));
+        for (let j = 0; j < Math.round(4 * k); j++) ps.spawn(P.SMOKE, R.range(-8, 8), -4, R.range(-10, 10), -R.range(10, 25), R.range(1.1, 1.6), mix(ASH, C[2], 0.3), R.range(3, 6), R.range(0.05, 0.25));
+      }
+      if (struck >= 0 && t < 1.7 && R.chance(6 * dt)) ps.spawn(P.SMOKE, R.range(-8, 8), -2, R.range(-4, 4), -R.range(9, 17), R.range(1, 1.3), 0, R.range(2, 3.5));
+      for (let i = 0; i < gone.length - 1; i++)
+        if (gone[i] <= t && gone[i] > t - dt && rand(o.seed, i, 6) < 0.5) {
+          const [x, y] = end[i];
+          ps.spawn(P.MOTE, x, y, R.range(-8, 8), R.range(6, 22), R.range(0.4, 0.8), R.chance(0.5) ? C[5] : C[4], R.range(0.5, 0.9));
+        }
+      ps.update(dt);
+      hot.update(dt);
+      lights.update(dt);
+    },
+    drawBack(p) {
+      // the scene darkens a beat before the strike: a soft veil, deepest round the bolt's path, gone at the flash
+      const dark = 0.5 * smooth(0.46, 0.66, t) * (1 - smooth(S1 - 0.01, S1 + 0.02, t));
+      if (dark > 0.01)
+        for (let y = -228; y < 36; y++)
+          for (let x = -W; x < W; x++) {
+            const d = Math.hypot(x / W, (y + 96) / 132), a = dark * (1 - smooth(0.55, 1, d));
+            if (a > 0.01) p.blend(x + 0.5, y + 0.5, NIGHT, a);
+          }
+      sigil(p, t, C, charge(), false);
+      // the cracks: arcs race out along them white, they glow with heat, cool to soot and fade
+      if (struck >= 0) {
+        const s = now(), front = REACH * ease.outCubic(clamp((t - S1) / 0.35)), T0 = heatAt(), fade = 1 - smooth(2.3, 2.95, t);
+        const elec = s.a < 0.14 ? s.s.k * (1 - s.a / 0.14) : 0;
+        for (const br of tree)
+          for (const [x, y, d] of br.pts) {
+            if (d > front) break;
+            const q = d / REACH, n = rand(Math.round(x * 2), Math.round(y * 2), 9), fresh = d > front - 6 && front < REACH;
+            const T = T0 * (1.15 - q) * (br.w < 1 ? 0.8 : 1) - n * 0.25, c = fresh || (elec > 0.3 && n < 0.85) ? (q < 0.5 ? WHITE : C[6]) : heat(T) || SOOT2;
+            p.dot(x, y + 1, SOOT, fade);
+            p.dot(x, y, c, fade);
+            if (br.w >= 1 && d < 9) p.dot(x, y + 2, SOOT, fade);
+            if ((fresh || elec > 0.3) && (Math.round(d) & 3) === 0) p.glow(x, y, 7, C[5], 0.4);
+            else if (T > 0.2 && (Math.round(d) & 3) === 0) p.glow(x, y, 5, c, 0.2 * T);
+          }
+        scorch(p, 0, 0, 12, T0, fade);
+        if (T0 > 0) p.glow(0, -2, 34, heat(0.55), 0.3 * T0);
+      }
+      ps.draw(p, "back");
+      hot.draw(p, "back");
+    },
+    draw(p) {
+      const s = now(), f = Math.floor(t * 30 + 1e-4), k = charge();
+      sigil(p, t, C, k, true);
+      // static rising off the charging sigil, more and more of it
+      if (t > 0.15 && t < S1) {
+        const r = rng(o.seed, 61, f);
+        for (let i = 0; i < Math.round(1 + 4 * k); i++) {
+          const a = r.range(0, TAU), x = Math.cos(a) * RX, y = Math.sin(a) * RX * SY;
+          crackle(p, zigzag(r, x, y, x + r.range(-2.5, 2.5), y - r.range(4, 9) * (0.6 + k), 0.45, 0.3), 0.45 + 0.4 * k, C, 0.3);
+        }
+        p.glow(0, -2, 36, C[4], 0.12 + 0.3 * k);
+      }
+      // the stepped leader feels down from above; a streamer climbs out of the sigil to meet it
+      if (t >= LEAD0 && t < S1) {
+        const u = clamp((t - LEAD0) / (S1 - LEAD0)), st = Math.min(STEPS, Math.floor(u * STEPS) + 1), fresh = 1 - ((u * STEPS) % 1);
+        const reach = TOP + (MEET - TOP) * Math.pow(st / STEPS, 1.2), prev = TOP + (MEET - TOP) * Math.pow((st - 1) / STEPS, 1.2);
+        for (const q of main.paths) {
+          const tk = q.w >= 1;
+          for (let i = 0; i < q.pts.length - 1; i++) {
+            const [ax, ay] = q.pts[i], [bx, by] = q.pts[i + 1];
+            if (by > reach) {
+              if (ay <= reach && i > 0) (p.px(ax, ay, WHITE), p.glow(ax, ay, 7, C[5], 0.5 * fresh + 0.15));
+              break;
+            }
+            const young = by > prev;
+            p.line(ax, ay, bx, by, young ? (fresh > 0.4 ? (tk ? C[6] : C[5]) : C[4]) : tk ? C[3] : C[2]);
+            if (i % 4 === 0 && ay > TOP + 14) p.glow(ax, ay, young ? 8 : 5, C[4], young ? 0.3 * fresh + 0.1 : 0.12);
+          }
+        }
+        if (t > 0.62) {
+          const h = -MEET * ease.outQuad((t - 0.62) / (S1 - 0.62)), r = rng(o.seed, 77, f);
+          const b = zigzag(r, 0, -1, r.range(-2, 2), -Math.max(3, h), 0.3, 0.3), tip = b.paths[0].pts.at(-1);
+          crackle(p, b, 0.85, C, 0.45);
+          p.px(tip[0], tip[1], WHITE);
+          p.glow(tip[0], tip[1], 9, C[5], 0.5);
+        }
+      }
+      // the strokes, the dart that runs down the channel before each flicker, the channel cooling and crumbling
+      const next = STROKES.find((q) => q.t > t);
+      if (next && next !== STROKES[0] && t > next.t - 0.06) {
+        const tr = chan(STROKES.indexOf(next)), u = (t - (next.t - 0.06)) / 0.06, i1 = Math.floor(u * tr.length);
+        trace(p, tr, C[3], 1);
+        trace(p, tr, C[6], 1, i1 - 18, i1);
+        for (let i = Math.max(0, i1 - 18); i < Math.min(tr.length, i1); i += 4) if (tr[i][1] > TOP + 14) p.glow(tr[i][0], tr[i][1], 9, C[4], 0.35);
+      } else if (s && s.k > 0) {
+        const hero = s.i === 0 && s.a < 1 / 30;
+        stroke(p, bolts[s.i], s.k, C, s.i === 0 ? 1.5 : 1.2, { hero, core: s.k > 0.6 ? (hero ? 1.2 : 0.8) : 0, minY: TOP + 14 });
+        const r = 4.5 * s.k;
+        p.circle(0, -1, r + 1.5, C[2]);
+        p.circle(0, -1, r + 0.5, C[5]);
+        p.circle(0, -1, r * 0.65, WHITE);
+        if (s.a < 0.07) sparkle(p, 0, -2, Math.round(12 * s.k * (1 - s.a / 0.07)), C[6], C[4], 0.25);
+        p.glow(0, -16, 96, C[3], 0.42 * s.k);
+        p.glow(0, -3, 22, C[5], 0.3 * s.k);
+        if (hero) p.glow(X0 * 0.5, -110, 170, C[3], 0.3);
+      } else if (s) {
+        const crumble = s.i === STROKES.length - 1, cool = clamp((s.a - 0.23) / 0.45), tr = chan(s.i);
+        for (let i = 0; i < tr.length - 1; i++) {
+          if (crumble && t >= gone[i]) continue;
+          const h = crumble ? 1 - clamp((t - last.t - 0.23) / (gone[i] - last.t - 0.23)) : 1 - cool;
+          p.line(tr[i][0], tr[i][1], tr[i + 1][0], tr[i + 1][1], h > 0.7 ? C[5] : h > 0.4 ? C[4] : h > 0.15 ? C[3] : C[2]);
+          if (i % 6 === 0 && h > 0.3 && tr[i][1] > TOP + 14) p.glow(tr[i][0], tr[i][1], 6, C[4], 0.15 * h);
+        }
+      }
+      // arcs crawl out along the cracks as they split, and again with every flicker
+      if (s && s.a < 0.4) {
+        const r = rng(o.seed, 91, f), run = s.i === 0 ? REACH * ease.outCubic(clamp(s.a / 0.35)) : REACH * clamp(s.a / 0.22);
+        for (const br of tree) {
+          if (br.w < 1 || r.next() < 0.3) continue;
+          const i1 = br.pts.findIndex(([, , d]) => d > run), j1 = i1 < 0 ? br.pts.length : i1, j0 = Math.max(0, j1 - r.int(7, 13));
+          const pts = br.pts.slice(j0, j1).map(([x, y]) => [x + r.range(-0.6, 0.6), y - 1.5 - r.range(0, 2.5)]);
+          if (pts.length > 1) crackle(p, { paths: [{ pts, w: 1 }] }, 0.9 * (1 - s.a / 0.4) + 0.1, C, 0.35);
+        }
+      }
+      ps.draw(p, "front");
+      hot.draw(p, "front");
+      lights.draw(p);
+    },
+  };
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
+
+
+},
+function(__e){
+// The release (flash, rings, flare, light) and the arcs are adapted from Sprite Fusion's open-source energy
+// (https://www.spritefusion.com/pixel-art-vfx/energy), MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Lights, P, Rng, rng, fit, band, bolt, forks, flare, sparkle, clamp, smooth, ease, noise, TAU, WHITE} = __r(1);
+const {cull} = __r(71);
+
+const meta = {
+  name: "Plasma explosion",
+  desc: "A blue-violet energy blast with no smoke: a white flash, a ball of plasma swelling into a thinning shell, shock rings in and out of depth, lightning arcs crackling off it.",
+  tags: ["explosion", "plasma", "energy", "electric", "magic", "sci-fi", "one-shot"],
+  size: [224, 200],
+  origin: [112, 100],
+  duration: 1.7,
+  loop: false,
+  fps: 30,
+  bg: "dark",
+  options: {
+    palette: ["#0a0828", "#1a1c6e", "#2c3cc0", "#4a7cf0", "#7cc0ff", "#c8ecff", "#ffffff"],
+    accent: ["#1c0a30", "#4a1a8c", "#8a3ce0", "#c48cff", "#f0d8ff"],
+    seed: 7,
+  },
+};
+
+const BALL = 0.55;
+
+function create(o) {
+  const C = fit(o.palette, 7), V = fit(o.accent, 5), R = new Rng(o.seed);
+  const ps = new Particles({ rng: R, sparks: [C[6], C[5], C[4], V[3]] }), lights = new Lights();
+  lights.add(0, 0, 96, C[4], 1, 0.6);
+  lights.add(0, 0, 40, WHITE, 0.9, 0.1);
+  lights.add(0, 0, 70, V[2], 0.5, 1.1);
+  for (let i = 0; i < 46; i++) {
+    const a = R.range(0, TAU), sp = R.range(140, 360);
+    ps.spawn(P.MOTE, Math.cos(a) * 4, Math.sin(a) * 4, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.2, 0.42), R.pick([C[6], C[5], C[4], V[3]]), R.range(0.7, 1.1));
+  }
+  for (let i = 0; i < 26; i++) {
+    const a = R.range(0, TAU), sp = R.range(40, 140);
+    ps.spawn(P.FLAKE, Math.cos(a) * 10, Math.sin(a) * 10, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.8, 1.5), R.pick([C[5], V[3], V[4]]), R.range(0.6, 1.6));
+  }
+  let t = 0;
+  return {
+    update(dt) {
+      t += dt;
+      // the shell sheds sparkles and motes as it thins
+      if (t > 0.12 && t < 0.9 && R.chance(30 * dt)) {
+        const a = R.range(0, TAU), r = shell(t);
+        ps.spawn(P.STAR, Math.cos(a) * r, Math.sin(a) * r, Math.cos(a) * R.range(10, 40), Math.sin(a) * R.range(10, 40), R.range(0.3, 0.6), R.chance(0.5) ? C[5] : V[4], R.range(0.5, 1.8));
+      }
+      ps.update(dt);
+      cull(ps, -meta.origin[0] + 3, -meta.origin[1] + 3, meta.size[0] - meta.origin[0] - 3, meta.size[1] - meta.origin[1] - 3);
+      lights.update(dt);
+    },
+    drawBack(p) {
+      // the tilted ring's far half, behind the ball
+      tilted(p, t, C, V, true);
+    },
+    draw(p) {
+      // the ball: a white heart, cyan and blue bands, a violet rim boiling at the edge; it swells, then hollows out
+      if (t < BALL) {
+        const u = t / BALL, r = shell(t), hollow = smooth(0.35, 1, u), boil = Math.floor(t * 20);
+        p.shade(-r - 3, -r - 3, r + 3, r + 3, (x, y, out) => {
+          const d = Math.hypot(x, y), a = Math.atan2(y, x), edge = r * (1 + 0.1 * noise(a * 3 + boil * 0.7, 3));
+          if (d > edge) return;
+          const v = d / edge;
+          if (v < hollow * 0.92) return;
+          // turbulent bands swirling round the heart, and bright filaments twisting through them
+          const n = noise(a * 4 + d * 0.25 + boil * 0.5, 5), w = v + n * 0.14, fil = Math.abs(Math.sin(a * 5 + d * 0.32 - t * 14 + n * 2.5)) < 0.1;
+          out.k = 0.25 * (1 - u);
+          if (v > 0.9) return V[2];
+          if (fil && v > 0.3) return u < 0.5 ? WHITE : C[5];
+          return w < 0.32 - u * 0.25 ? WHITE : w < 0.52 ? C[5] : w < 0.72 ? C[4] : w < 0.86 ? (u < 0.5 ? C[3] : V[3]) : V[2];
+        });
+        p.glow(0, 0, r * 1.6 + 6, C[4], 0.6 * (1 - u));
+      }
+      if (t < 0.07) p.circle(0, 0, 9 - t * 60, WHITE);
+      if (t < 0.25) flare(p, 0, 0, 52 * Math.pow(1 - t / 0.25, 1.3), 1 - t / 0.25, C);
+      // shock rings: a fast bright one, a slower violet one
+      const u1 = t / 0.42;
+      if (u1 < 1) {
+        p.ring(0, 0, 8 + 84 * ease.outCubic(u1), Math.max(1, 3 * (1 - u1)), u1 < 0.25 ? WHITE : C[5], 1.15 - u1);
+        p.glowRing(0, 0, 8 + 84 * ease.outCubic(u1), 5, C[4], 0.35 * (1 - u1));
+      }
+      const u2 = (t - 0.06) / 0.6;
+      if (u2 > 0 && u2 < 1) p.ring(0, 0, 6 + 60 * ease.outCubic(u2), Math.max(1, 2 * (1 - u2)), V[3], 1.1 - u2);
+      // arcs: lightning crackling out of the heart, re-struck every few frames, shorter as the charge runs out
+      const left = 1 - smooth(0.15, 0.85, t), strike = Math.floor(t * 18);
+      if (left > 0) {
+        const r = rng(o.seed, strike, 17), n = 2 + Math.round(4 * left);
+        for (let i = 0; i < n; i++) {
+          const a = r.range(0, TAU), L = r.range(26, 58) * (0.45 + 0.55 * left), path = bolt(r, 0, 0, Math.cos(a) * L, Math.sin(a) * L, { jag: 0.28, depth: 4 });
+          arc(p, path, C, V, 0.8 * left);
+          if (r.chance(0.5)) for (const f of forks(r, path, { count: 1, len: 14, jag: 0.35 })) arc(p, f, C, V, 0.5 * left);
+        }
+        // and little arcs crawling over the shell
+        const rs = shell(t);
+        for (let i = 0; i < 3; i++) {
+          const a = r.range(0, TAU), b = a + r.range(0.3, 0.6);
+          arc(p, bolt(r, Math.cos(a) * rs, Math.sin(a) * rs, Math.cos(b) * rs, Math.sin(b) * rs, { jag: 0.4, depth: 3 }), C, V, 0.6 * left);
+        }
+      }
+      tilted(p, t, C, V, false);
+      ps.draw(p);
+      lights.draw(p);
+    },
+  };
+}
+
+// the ball's radius: punched out fast, then easing
+function shell(t) {
+  return 5 + 30 * ease.outCubic(clamp(t / BALL));
+}
+
+// a ring on a tilted plane racing out round the blast: far half behind, near half in front
+function tilted(p, t, C, V, back) {
+  const u = (t - 0.03) / 0.5;
+  if (u <= 0 || u >= 1) return;
+  band(p, 0, 4, 12 + 86 * ease.outCubic(u), 0.28, Math.max(1, 4 * (1 - u)), 1.15 - u, [V[1], V[2], C[4], C[5]], (g) => (Math.sin(g) < 0) === back, u < 0.15);
+}
+
+// one arc: a soft glow along it, a cyan halo line, a white core
+function arc(p, path, C, V, k) {
+  if (k <= 0.05) return;
+  for (let i = 1; i < path.length; i++) {
+    const [ax, ay] = path[i - 1], [bx, by] = path[i];
+    p.glowLine(ax, ay, bx, by, 5, V[2], 0.18 * k);
+    p.line(ax + 1, ay, bx + 1, by, C[4], k * 0.8);
+    p.line(ax, ay, bx, by, i < path.length * 0.6 ? WHITE : C[5], Math.min(1, k * 1.4));
+  }
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
+
+
+},
+function(__e){
+// Shared by the explosions. Not an effect (the leading _ keeps the tools away).
+// The fire balls, rocks and scorch are adapted from Sprite Fusion's open-source explosion
+// (https://www.spritefusion.com/pixel-art-vfx/explosion), MIT License, Copyright (c) 2026 Hugo Duprez.
+
+const {P, PF, clamp, smooth, rand, TAU, WHITE, hex, mix, scale, rgb} = __r(1);
+
+const OUTLINE = hex("#1a1422"), SOOT = hex("#0d0a12"), SOOT2 = hex("#17121d");
+
+/** Stone colors from one body color: a lit face, the body, a shaded face, and the dust it makes. */
+function stone(c) {
+  c = hex(c);
+  return { light: mix(scale(c, 1.35), WHITE, 0.08), body: c, shade: scale(c, 0.64), dust: mix(scale(c, 1.2), rgb(150, 140, 150), 0.3) };
+}
+
+/** A 9-step fire ramp, white-hot down to smouldering (the shape of FIRE_RAMP), from an 8-step palette (dark to bright). */
+const fireRamp = (F) => [F[7], F[6], F[5], F[4], F[3], F[2], F[1], mix(F[1], F[0], 0.5), F[0]];
+
+/** One FIRE particle drawn in the fire ramp FR: a darker rim, a lit core, a tongue on top, a hot heart. */
+function fireBall(p, q, FR) {
+  const k = q.life / q.max, age = 1 - k, n = FR.length, x = q.x, y = q.y;
+  const heat = Math.min(0.999, Math.pow(age, 0.62) + (q.seed % 1) * 0.1), idx = Math.min(n - 2, Math.floor(heat * (n - 1)));
+  const r = q.size * (0.55 + 0.45 * Math.min(1, age * 7)) * (1 - age * 0.55), c = FR[idx];
+  if (idx >= n - 2) return p.disc(x, y, r, c, Math.min(1, k * 3) * 0.85);
+  // the hottest puffs get a rim a step darker still, so a mass of them reads as separate balls
+  p.circle(x, y, r, FR[Math.min(n - 1, idx + (idx <= 2 ? 3 : 2))]);
+  p.circle(x - r * 0.16, y - r * 0.22, r * 0.78, c);
+  if (r > 1.6) p.circle(x, y - r * 0.9, r * 0.42, c);
+  if (idx <= 3 && r > 1.8) p.circle(x - r * 0.28, y - r * 0.34, r * 0.36, FR[Math.max(0, idx - 1)]);
+  if (idx < 6) p.glow(x, y, r * 2.4 + 2, c, 0.18 * k);
+}
+
+/** A particle system's layer ("back" or "front") with its FIRE puffs in the fire ramp FR, so a palette recolors them. */
+function drawPs(p, ps, layer, FR) {
+  const all = ps.list, fires = [], rest = [];
+  for (const q of all) (q.k === P.FIRE ? fires : rest).push(q);
+  const back = layer === "back";
+  if (!back) for (const q of fires) if (q.delay <= 0 && !(q.flag & PF.BACK)) fireBall(p, q, FR);
+  ps.list = rest;
+  ps.draw(p, layer);
+  ps.list = all;
+  if (back) for (const q of fires) if (q.delay <= 0 && q.flag & PF.BACK) fireBall(p, q, FR);
+}
+
+const LIFTS = new Set([P.SMOKE, P.DUST, P.FIRE, P.EMBER, P.VAPOUR]);
+/**
+ * An updraft column at x: smoke, dust, fire and embers below `top` and within w of the axis are carried up
+ * (up px/s²) and squeezed toward it; near the floor (within `low` px) they're drawn in from as far as `reach`:
+ * the afterwinds that feed a blast's column. k scales it all.
+ */
+function draft(ps, dt, { x = 0, top = -Infinity, w = 12, up = 150, squeeze = 4, pull = 0, low = 10, reach = 100, k = 1 }) {
+  if (k <= 0) return;
+  for (const q of ps.list) {
+    if (q.delay > 0 || !LIFTS.has(q.k) || q.y < top) continue;
+    const dx = q.x - x, ax = Math.abs(dx), u = ax / w;
+    if (u < 1) {
+      const f = (1 - u * u) * k;
+      q.vy -= up * f * dt;
+      q.vx -= dx * squeeze * f * dt;
+    }
+    if (pull && q.y > -low && ax > w * 0.4 && ax < reach) q.vx -= Math.sign(dx) * pull * k * (1 - ax / reach) * dt;
+  }
+}
+
+/** Drop particles that leave the box (local px), so nothing is drawn past the canvas. */
+function cull(ps, x0, y0, x1, y1) {
+  const L = ps.list;
+  for (let i = L.length - 1; i >= 0; i--) {
+    const q = L[i];
+    if (q.x < x0 || q.x > x1 || q.y < y0 || q.y > y1) L.splice(i, 1);
+  }
+}
+
+const SOFT = new Set([P.SMOKE, P.DUST, P.VAPOUR]);
+/**
+ * Soft particles (smoke, dust, vapour) fade out over w px as they near the sides x0, x1 and go before they reach
+ * them; y1, a bottom edge, gets a thin w of 6 (keep things off it by design).
+ */
+function fadeEdges(ps, x0, x1, w = 30, y1 = Infinity) {
+  const L = ps.list;
+  for (let i = L.length - 1; i >= 0; i--) {
+    const q = L[i];
+    if (!SOFT.has(q.k)) continue;
+    const r = q.size * 1.65, e = Math.min((Math.min(q.x - x0, x1 - q.x) - r) / w, (y1 - q.y - r) / 6);
+    if (e <= 0) L.splice(i, 1);
+    else if (e < 1) q.life = Math.min(q.life, q.max * 0.42 * e);
+  }
+}
+
+/** A soft pool of light, an ellipse rx by ry at (x, y): light falling on the floor (keep ry small, it's perspective). */
+function pool(p, x, y, rx, ry, c, k) {
+  if (k <= 0.004 || rx < 1 || ry < 0.5) return;
+  p.shade(x - rx, y - ry, x + rx, y + ry, (px, py, out) => {
+    const dx = (px - x) / rx, dy = (py - y) / ry, d = dx * dx + dy * dy;
+    if (d >= 1) return;
+    const f = 1 - Math.sqrt(d);
+    out.l = c;
+    out.k = f * f * k;
+  });
+}
+
+/** A translucent ellipse (blended, never dithered): c and a may be functions of d (0 centre .. 1 rim). */
+function haze(p, x, y, rx, ry, c, a) {
+  if (rx < 0.5 || ry < 0.5) return;
+  const fc = typeof c === "function", fa = typeof a === "function";
+  p.each(x - rx, y - ry, x + rx, y + ry, (lx, ly, sx, sy) => {
+    const dx = (lx - x) / rx, dy = (ly - y) / ry, d2 = dx * dx + dy * dy;
+    if (d2 > 1) return;
+    const d = Math.sqrt(d2);
+    p.blendPx(sx, sy, fc ? c(d) : c, fa ? a(d) : a);
+  });
+}
+
+/** Heat for a scorch, from a fire ramp (bright to dark) down to cinders. */
+const heatRamp = (FR) => [...FR.slice(0, 8), mix(FR[8], SOOT, 0.3), mix(FR[8], SOOT, 0.65)];
+
+/**
+ * The floor under a blast: a burn that spreads out in a blink, glows white-hot and cools through the heat ramp
+ * HR to soot over `cool` seconds; a few cracks hold their glow twice as long. rows deep, fade 0..1.
+ */
+function scorch(p, HR, t, rx0, cool, fade, rows = 3) {
+  if (fade <= 0) return;
+  const rx = rx0 * Math.min(1, t / 0.08), ry = rows + 1.5, n = HR.length;
+  for (let y = 0; y < rows; y++)
+    for (let x = Math.floor(-rx); x <= Math.ceil(rx); x++) {
+      const dx = (x + 0.5) / rx, dy = (y + 0.5) / ry, d = Math.sqrt(dx * dx + dy * dy);
+      if (d > 1) continue;
+      const k = rand(x * 31 + y, 3), T = Math.pow(clamp(1 - t / cool), 1.4) * (1.25 - d) - k * 0.35;
+      const crack = k > 0.88 && d < 0.85 ? Math.pow(clamp(1 - t / (cool * 2)), 1.2) * (1.15 - d) * 0.8 : 0, H = Math.max(T, crack);
+      if (H > 0.06) {
+        const c = HR[Math.min(n - 1, Math.floor((1 - Math.min(1, H)) * (n - 1)))];
+        p.dot(x, y, c, fade);
+        if ((x & 3) === 0 || crack > T) p.glow(x + 0.5, y, 6, c, 0.18 * H * fade);
+      } else p.dot(x, y, d < 0.5 ? SOOT : SOOT2, (d < 0.95 - k * 0.3 ? 1 : 1 - d) * fade);
+    }
+}
+
+/**
+ * A rock (a Bits CHUNK): a lit side, a shaded side and an outline, turning as it spins. b.heat (0..1) makes
+ * it molten: its heart and shaded side glow through the fire ramp FR and it gives off light, cooling to stone.
+ */
+function rock(p, b, st, FR) {
+  const r = 0.6 + b.s * 0.75, fade = Math.min(1, b.life / 0.5), lx = Math.cos(b.a) * r * 0.4, ly = Math.sin(b.a) * r * 0.4, heat = b.heat ?? 0;
+  p.shade(b.x - r - 1, b.y - r - 1, b.x + r + 1, b.y + r + 1, (x, y, out) => {
+    const dx = x - b.x, dy = y - b.y, d = Math.hypot(dx * 1.15, dy);
+    if (d > r + 0.9) return;
+    out.a = fade;
+    if (d > r) return OUTLINE;
+    const lit = dx * lx + dy * ly;
+    if (heat > 0.08) {
+      const g = heat * (1.1 - d / (r + 0.5)) + (lit > 0.3 ? heat * 0.45 : 0);
+      if (g > 0.5) return FR[g > 1 ? 1 : g > 0.8 ? 2 : g > 0.62 ? 3 : 4];
+      if (g > 0.32) return FR[5];
+    }
+    return lit < -0.4 ? st.light : lit > 0.6 ? st.shade : st.body;
+  });
+  if (heat > 0.05) p.glow(b.x, b.y, r * 2 + 3, FR[3], 0.32 * heat * fade);
+}
+
+/**
+ * Light hugging the upper half of a circle of radius R at (x, y) (a dome's shock), falling off over width w.
+ * box [x0, y0, x1, y1] (local) keeps it inside a canvas.
+ */
+function glowDome(p, x, y, R, w, c, k, box = [-Infinity, -Infinity, Infinity, Infinity]) {
+  if (k <= 0.004 || w < 1) return;
+  p.shade(Math.max(box[0], x - R - w), Math.max(box[1], y - R - w), Math.min(box[2], x + R + w), Math.min(box[3], y + 0.5), (px, py, out) => {
+    const d = Math.abs(Math.hypot(px - x, py - y) - R) / w;
+    if (d >= 1) return;
+    out.l = c;
+    out.k = (1 - d) * (1 - d) * k;
+  });
+}
+
+/**
+ * A burning thing's trail: pts [{ x, y, t }] (oldest first) at time t, drawn as a ribbon that is fire near the
+ * head (fire ramp FR) and swells into thin smoke behind (smoke ramp SM, light to dark) over life seconds.
+ */
+function trail(p, pts, t, FR, SM, life = 0.5, w = 1, heat = 1) {
+  let lx = NaN, ly = NaN;
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const q = pts[i], age = (t - q.t) / life;
+    if (age >= 1) break;
+    if (Math.hypot(q.x - lx, q.y - ly) < 1.6) continue;
+    lx = q.x;
+    ly = q.y;
+    const r = w * (0.7 + age * 2.6);
+    if (age < 0.12 * heat) p.circle(q.x, q.y - age * 6, r * 0.8, FR[age < 0.05 ? 3 : 5]);
+    else p.disc(q.x, q.y - age * 6, r, SM[Math.min(SM.length - 1, 1 + Math.floor(age * 3))], 0.55 * (1 - age));
+  }
+}
+
+/**
+ * Draw a particle system's GRIT as dirt in flight: fast bits stretch into short streaks (a darker tail, the bit at
+ * the head), slow ones are the usual 1 or 2 px chips. The rest of the system draws as usual. layer as in draw.
+ */
+function drawDirt(p, ps, layer) {
+  const all = ps.list, grit = [], rest = [];
+  for (const q of all) (q.k === P.GRIT ? grit : rest).push(q);
+  ps.list = rest;
+  ps.draw(p, layer);
+  ps.list = all;
+  if (layer === "back") return;
+  for (const q of grit) {
+    if (q.delay > 0) continue;
+    const k = q.life / q.max, sp = Math.hypot(q.vx, q.vy);
+    if (k < 0.25 && k * 4 < 0.5) continue;
+    if (sp > 140) {
+      const L = Math.min(5, sp * 0.012), ux = q.vx / sp, uy = q.vy / sp;
+      p.line(q.x - ux * L, q.y - uy * L, q.x, q.y, (u) => (u < 0.5 ? scale(q.col, 0.7) : q.col));
+    } else {
+      p.px(q.x, q.y, q.col);
+      if (q.size >= 2) p.px(q.x + 1, q.y, q.col), p.px(q.x, q.y + 1, scale(q.col, 0.8)), p.px(q.x + 1, q.y + 1, scale(q.col, 0.7));
+    }
+  }
+}
+
+/**
+ * A crater in the floor at x: a dark pit (an ellipse in perspective) with its far wall lit, dirt heaped in a lip on
+ * either side, and loose earth scattered round it. E: an earth ramp (dark to bright, 5+ steps); r: half-width;
+ * k: 0..1 how far it has opened; a: alpha (fade it out).
+ */
+function crater(p, E, x, r, k, a = 1) {
+  if (k <= 0 || a <= 0) return;
+  const n = E.length, rx = r * k, ry = Math.max(1.5, r * 0.17 * k);
+  for (let py = -1; py <= Math.ceil(ry) + 1; py++)
+    for (let px = Math.floor(-rx - 1); px <= Math.ceil(rx + 1); px++) {
+      const dx = (px + 0.5) / rx, dy = (py + 0.5 - ry * 0.35) / ry, d = Math.sqrt(dx * dx + dy * dy);
+      if (d > 1.08) continue;
+      // the pit: darkest at its far side under the lit rim, the near wall a step lighter
+      const c = d > 0.92 ? (dy < 0 ? E[n - 2] : E[2]) : dy < -0.2 ? E[0] : dy < 0.35 ? E[1] : E[2];
+      p.dot(x + px, py, c, a);
+    }
+  // the lip: dirt heaped up either side, lit on top, and a scatter of loose earth
+  for (const s of [-1, 1])
+    for (let i = 0; i < 9; i++) {
+      const u = i / 8, h = Math.round(Math.sin(Math.PI * u) * 2.2 * k + (rand(i, s > 0 ? 3 : 4) < 0.4 ? 1 : 0) * k);
+      const hx = x + s * (rx * 0.82 + u * r * 0.55);
+      for (let j = 0; j <= h; j++) p.dot(hx, -j, j === h ? E[n - 2] : j === h - 1 ? E[3] : E[2], a);
+    }
+  for (let i = 0; i < 26; i++) {
+    const s = rand(i, 7) < 0.5 ? -1 : 1, d = rx * (1.05 + rand(i, 8) * 1.4), y = Math.round(rand(i, 9) * 3) - 1;
+    if (rand(i, 10) < k) p.dot(x + s * d, y, rand(i, 11) < 0.5 ? E[3] : E[2], a);
+  }
+}
+
+/** A hemisphere of white-hot air on the floor at x, radius r: an orange rim, a hot body, a white core; k 1 → 0 as it dies. */
+function dome(p, F, x, r, k) {
+  const e = 1.4 / r;
+  p.shade(x - r - 1.5, -r - 1.5, x + r + 1.5, 0.5, (px, py) => {
+    const d = Math.hypot(px - x, py) / r;
+    if (d > 1 + e) return;
+    return d > 1 ? F[2] : d > 0.8 ? (k > 0.45 ? F[6] : F[5]) : d > 0.5 ? (k > 0.45 ? WHITE : F[6]) : k > 0.2 ? WHITE : F[6];
+  });
+}
+
+/**
+ * A lobe of a billowing cloud, shaded like a ball. The sky lights it from the top left through the smoke ramp SM
+ * (light to dark); fire (0..1) burns in its heart in the fire ramp FR (bright to dark), shrinking toward the
+ * middle as it cools, with a darker band and a dark orange-red seam at its edge so a mass of burning lobes reads
+ * apart; glow (0..1) lights its underside from below in fire colors. a: opacity (smoke edges stay soft); z: -1 far
+ * .. 1 near (the far side sits a step darker); dark shifts the smoke down the ramp. style 1 cel-shades the smoke:
+ * a lit crescent on top, a mid tone, a dark underside the fire tints while it's hot.
+ */
+function lobe(p, x, y, r, FR, SM, fire, glow, a, z = 0, dark = 0, style = 0) {
+  if (r < 0.7 || a <= 0.01) return;
+  const n = FR.length, m = SM.length, back = z < -0.35 ? 1 : 0, rim = 1 - Math.min(0.35, 1.6 / r), seam = 1 - Math.min(0.3, 1.3 / r);
+  // the soft edge: a step more see-through than the body, less of a step as the whole lobe thins (no bubble rims)
+  const D = (i) => SM[Math.min(m - 1, i + back + dark)], soft = 0.55 + 0.4 * (1 - Math.min(1, a));
+  const px = (lx, ly, sx, sy) => {
+    const dx = (lx - x) / r, dy = (ly - y) / r, d2 = dx * dx + dy * dy;
+    if (d2 > 1) return;
+    const d = Math.sqrt(d2), nz = Math.sqrt(1 - d2), sky = -0.5 * dx - 0.66 * dy + 0.56 * nz;
+    const v = fire * (1.32 - 0.78 * d) + 0.14 * sky * fire;
+    let c, k = 0, solid = false;
+    if (v > 0.44) {
+      let i = Math.min(n - 3, Math.max(0, Math.floor((1.3 - v) * (n - 1) * 0.78)));
+      if (d > seam) i = Math.min(6, Math.max(4, i + 2));
+      else if (d > seam - 0.22) i = Math.min(n - 3, i + 1);
+      c = FR[i];
+      k = 0.05 * fire;
+      solid = true;
+    } else if (style) {
+      const lam = -0.42 * dx - 0.78 * dy + 0.46 * nz;
+      if (lam > 0.66 && d > 0.4) c = D(0);
+      else if (lam > 0.16) c = D(1);
+      else if (lam > -0.3) c = D(2);
+      else {
+        c = D(lam < -0.64 ? 4 : 3);
+        const g = glow * (0.6 + 0.4 * dy);
+        if (g > 0.55) (c = FR[g > 0.8 ? 5 : 6]), (k = 0.08 * g);
+        else if (g > 0.34) c = mix(c, FR[6], 0.6);
+        else if (g > 0.16) c = mix(c, FR[7], 0.45);
+      }
+    } else {
+      const g = glow * (0.82 * dy + 0.3 * nz);
+      if (g > 0.45) (c = FR[g > 0.66 ? 4 : 5]), (k = 0.1 * glow);
+      else if (g > 0.3) c = FR[6];
+      else if (g > 0.2) c = FR[7];
+      else {
+        const s = sky * 0.5 + 0.5;
+        c = D(s > 0.8 ? 0 : s > 0.62 ? 1 : s > 0.42 ? 2 : s > 0.22 ? 3 : 4);
+      }
+    }
+    p.blendPx(sx, sy, c, solid || d <= rim ? a : a * soft);
+    if (k > 0) p.add(sx, sy, c, k);
+  };
+  if (p.sn !== 0 || p.cs !== 1) return p.each(x - r, y - r, x + r, y + r, px);
+  // unrotated (the usual case): walk the screen pixels directly
+  const ax = p.tx + (x - r) * p.fx, bx = p.tx + (x + r) * p.fx;
+  const sx0 = Math.max(p.ox, Math.floor(Math.min(ax, bx))), sx1 = Math.min(p.ox + p.w - 1, Math.ceil(Math.max(ax, bx)));
+  const sy0 = Math.max(p.oy, Math.floor(p.ty + y - r)), sy1 = Math.min(p.oy + p.h - 1, Math.ceil(p.ty + y + r));
+  for (let sy = sy0; sy <= sy1; sy++) {
+    const ly = sy + 0.5 - p.ty, q = (ly - y) / r;
+    if (q * q >= 1) continue;
+    // only the span of this row inside the circle
+    const hw = r * Math.sqrt(1 - q * q), cx = p.tx + x * p.fx;
+    for (let sx = Math.max(sx0, Math.floor(cx - hw - 0.5)), e = Math.min(sx1, Math.ceil(cx + hw)); sx <= e; sx++) px((sx + 0.5 - p.tx) * p.fx, ly, sx, sy);
+  }
+}
+
+/**
+ * A rolling fireball. n lobes ride a vortex ring that climbs (rise px, slowing with time constant tau, then
+ * drifting up at drift px/s), swells (tube and ring radii grow with time constant grow) and rolls (up through
+ * the middle, out over the top, down the outside, back in underneath), while it cools from white-hot fire
+ * into smoke that glows from inside, then thins away. Seen from a little below: the near side sits lower.
+ * update(dt); draw(p, FR (fire ramp, bright to dark), SM (smoke ramp, light to dark), { mid }) (mid() is drawn
+ * between the far and near lobes: a stem going up into it); shape() its centre and radii; hot() how hot its heart
+ * still is; ember() how strongly its inside still glows. Options for a nuclear cap: style 1 (cel-shaded lobes),
+ * inner (a glow that lingers inside and draws back to the middle as it cools), hollow (the underside sits a step
+ * darker), fray [t0, rate, t1] with onFray(x, y, r, ux, uy) (the rim sheds small puffs late on).
+ */
+class Plume {
+  constructor(R, o = {}) {
+    this.o = o = {
+      x: 0, y: -20, rise: 100, tau: 1.2, drift: 4, tube: [8, 20], ring: [1, 18], grow: 0.9, n: 40, size: [5, 10], swell: 0.5,
+      spin: 2.4, spinTau: 1.6, heat: 1.15, cool: 0.45, under: 0.5, tilt: 0.2, squash: 0.7, fade: [4, 6], glow: 1, spread: 10,
+      style: 0, inner: false, hollow: false, fray: null, ...o,
+    };
+    this.R = R;
+    this.t = 0;
+    this.roll = 0;
+    this.onFray = null;
+    // spread over the ring evenly: the roll angle on a golden-ratio walk, the turn round the axis in order
+    this.lobes = Array.from({ length: o.n }, (_, i) => ({
+      th: TAU * ((i * 0.618034 + R.range(-0.08, 0.08)) % 1), ph: (TAU * (i + R.range(-0.35, 0.35))) / o.n,
+      j: R.range(-0.55, 0.12), s: R.range(o.size[0], o.size[1]), h: R.range(-0.22, 0.08), dx: R.range(-1, 1), dy: R.range(-1, 0.4),
+      f: R.range(-0.9, 0.5), gv: R.range(0.55, 1.15),
+    }));
+  }
+  shape(t = this.t) {
+    const o = this.o, u = Math.max(0, t), g = 1 - Math.exp(-u / o.grow);
+    return { x: o.x, y: o.y - o.rise * (1 - Math.exp(-u / o.tau)) - o.drift * u, tube: o.tube[0] + (o.tube[1] - o.tube[0]) * g, ring: o.ring[0] + (o.ring[1] - o.ring[0]) * g, g };
+  }
+  hot(t = this.t) {
+    return clamp(this.o.heat - this.o.cool * t + 0.3);
+  }
+  /** How strongly the inside still glows (0..1), lingering well after the fire has gone. */
+  ember(t = this.t) {
+    return clamp((this.o.heat - this.o.cool * t + 1) / 1.1);
+  }
+  // where every lobe is at time t
+  lobesAt(t) {
+    const o = this.o, S = this.shape(t), base = o.heat - o.cool * t, span = S.ring + S.tube || 1, list = [];
+    for (const q of this.lobes) {
+      const fade = 1 - smooth(o.fade[0] + q.f, o.fade[1] + q.f * 0.5, t), loose = Math.pow(smooth(o.fade[0] - 1.8 + q.f, o.fade[1], t), 1.5) * o.spread;
+      if (fade <= 0) continue;
+      const th = q.th - this.roll, rt = S.tube * (1 + q.j), rho = S.ring + rt * Math.cos(th), up = Math.sin(th);
+      const X = rho * Math.cos(q.ph), Z = rho * Math.sin(q.ph);
+      // the outside cools first; the underside keeps its heat, fed from below
+      const heat = base + q.h - 0.18 * Math.max(0, Math.cos(th)) * clamp(t * 2) + o.under * Math.max(0, -up) * clamp(base + 0.6);
+      const r = q.s * (0.5 + 0.5 * S.g) * (1 + o.swell * clamp(1 - heat)) * (1 + 0.35 * (1 - fade));
+      list.push({ x: S.x + X + q.dx * loose, y: S.y - rt * up * o.squash + Z * o.tilt + q.dy * loose, z: Z / span, up, out: Math.cos(th), heat, q, fade, r, d: Math.hypot(X, Z) / span, c: 1 - Math.min(1, Math.abs(X) / span) });
+    }
+    return list.sort((a, b) => a.z - b.z);
+  }
+  update(dt) {
+    const o = this.o;
+    this.t += dt;
+    this.roll += o.spin * (0.12 + 0.88 * Math.exp(-this.t / o.spinTau)) * dt;
+    // late on, the rim frays: lobes on the outside shed small puffs that drift off and thin
+    if (o.fray && this.onFray && this.t > o.fray[0] && this.t < (o.fray[2] ?? Infinity)) {
+      const S = this.shape(), k = o.fray[1] * dt * smooth(o.fray[0], o.fray[0] + 1, this.t);
+      for (const e of this.lobesAt(this.t)) {
+        if (e.out < 0.2 || !this.R.chance(k * e.fade)) continue;
+        const ux = e.x - S.x, uy = e.y - S.y, l = Math.hypot(ux, uy) || 1;
+        this.onFray(e.x + (ux / l) * e.r * 0.6, e.y + (uy / l) * e.r * 0.6, e.r, ux / l, uy / l);
+      }
+    }
+  }
+  draw(p, FR, SM, { mid } = {}) {
+    const o = this.o, t = this.t;
+    if (t >= o.fade[1] + 0.5) return;
+    const S = this.shape(t), base = o.heat - o.cool * t, span = S.ring + S.tube || 1, list = this.lobesAt(t), age = clamp(t / o.fade[1]);
+    const E = this.ember(t), reach = 0.3 + 1.15 * E;
+    let drawn = false;
+    for (const e of list) {
+      if (!drawn && e.z >= 0 && mid) (drawn = true), mid();
+      const h = e.heat, fade = e.fade, fire = clamp((h - 0.2) / 0.75);
+      // the glow from inside: strongest under the middle, uneven from lobe to lobe; with inner, it draws back to the
+      // middle as the cap cools
+      const glow = o.inner
+        ? E * clamp((reach - e.d) / 0.45) * (0.45 + 0.55 * Math.max(0, -e.up)) * e.q.gv * o.glow
+        : clamp((base + 0.45) / 0.85) * o.glow * (0.4 + 0.35 * Math.max(0, -e.up) + 0.4 * e.c) * e.q.gv;
+      lobe(p, e.x, e.y, e.r, FR, SM, fire, glow, fade * (0.82 + 0.18 * fire), e.z, (age > 0.72 ? 1 : 0) + (o.hollow && e.up < -0.35 ? 1 : 0), o.style);
+      if (fire > 0.25) p.glow(e.x, e.y, e.r * 1.25 + 2, FR[2], 0.07 * fire);
+    }
+    if (!drawn && mid) mid();
+    const hot = this.hot(t);
+    if (hot > 0) p.glow(S.x, S.y, span * 1.8 + 14, FR[3], 0.32 * hot * o.glow);
+    if (o.inner && E > 0.05) p.glow(S.x, S.y + S.tube * 0.3, span * (0.5 + 0.7 * E) + 8, FR[4], 0.22 * E * E);
+  }
+}
+
+/**
+ * A rising column: lobes boil up a stem from the floor into whatever sits on top, wide at the foot, swaying,
+ * cooling from fire to smoke and dust. update(dt, top, feed): top is the y the stem rises to, feed 0..1 how
+ * strongly it's still being fed (new lobes stop when it's 0, and the stem breaks up from the bottom).
+ * draw(p, FR, SM, fire (0..1 heat at the foot), glow (0..1 under-light)).
+ */
+class Column {
+  constructor(R, o = {}) {
+    this.R = R;
+    this.o = o = { w: 7, foot: 16, speed: 70, size: [5, 8], n: 18, sway: 2.5, fade: 0.5, style: 0, ...o };
+    this.t = 0;
+    this.lobes = [];
+    this.acc = 0;
+  }
+  spawn(y) {
+    const R = this.R, o = this.o;
+    this.lobes.push({ y, x: R.range(-1, 1), s: R.range(o.size[0], o.size[1]), ph: R.range(0, TAU), a: 0, v: R.range(0.8, 1.2) });
+  }
+  update(dt, top, feed) {
+    const o = this.o, L = Math.max(10, -top);
+    this.t += dt;
+    if (feed > 0) for (this.acc += dt * feed * o.n * (o.speed / L); this.acc > 1; this.acc--) this.spawn(-1);
+    for (let i = this.lobes.length - 1; i >= 0; i--) {
+      const b = this.lobes[i], u = clamp(-b.y / L);
+      b.y -= o.speed * b.v * (0.45 + 0.55 * Math.min(1, -b.y / 24)) * dt;
+      b.a = Math.min(1, b.a + dt * 4);
+      if (b.y < top || (feed <= 0 && (b.a -= dt * (2 - u)) <= 0)) this.lobes.splice(i, 1);
+    }
+  }
+  draw(p, top, FR, SM, fire, glow) {
+    const o = this.o, L = Math.max(10, -top);
+    // draw from the top down so the foot sits in front
+    const list = [...this.lobes].sort((a, b) => a.y - b.y);
+    for (const b of list) {
+      const u = clamp(-b.y / L), foot = Math.pow(1 - u, 4), w = o.w + o.foot * foot;
+      const x = b.x * w * 0.45 + Math.sin(this.t * 1.7 + b.ph + u * 3) * o.sway * u;
+      const r = b.s * (0.75 + 0.5 * foot + 0.35 * u) * Math.min(1, b.a * 1.5);
+      const end = 1 - smooth(0.85, 1, u);
+      lobe(p, x, b.y - r * 0.3 * foot, r, FR, SM, clamp(fire * (1.1 - u * 0.9)), glow * smooth(0.55, 1, u), Math.min(1, b.a) * end * 0.9, 0, u > 0.5 ? 0 : 1, o.style);
+    }
+  }
+}
+
+__def(__e, "OUTLINE", () => OUTLINE);
+__def(__e, "stone", () => stone);
+__def(__e, "fireRamp", () => fireRamp);
+__def(__e, "fireBall", () => fireBall);
+__def(__e, "drawPs", () => drawPs);
+__def(__e, "draft", () => draft);
+__def(__e, "cull", () => cull);
+__def(__e, "fadeEdges", () => fadeEdges);
+__def(__e, "pool", () => pool);
+__def(__e, "haze", () => haze);
+__def(__e, "heatRamp", () => heatRamp);
+__def(__e, "scorch", () => scorch);
+__def(__e, "rock", () => rock);
+__def(__e, "glowDome", () => glowDome);
+__def(__e, "trail", () => trail);
+__def(__e, "drawDirt", () => drawDirt);
+__def(__e, "crater", () => crater);
+__def(__e, "dome", () => dome);
+__def(__e, "lobe", () => lobe);
+__def(__e, "Plume", () => Plume);
+__def(__e, "Column", () => Column);
+
+
+},
+function(__e){
+// The release (a white disc, a cross, two rings, a big light and a spray of motes and stars) is adapted from
+// Sprite Fusion's open-source energy charge (https://www.spritefusion.com/pixel-art-vfx/energy),
+// MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Lights, P, Rng, PAL, fit, flare, sparkle, clamp, ease, TAU, WHITE} = __r(1);
+const {sigil} = __r(73);
+
+const CY = -28, GATHER = 0.22, N = 9;
+
+const meta = {
+  name: "Mana burst",
+  desc: "Energy rushes into a point and blows out in a white flash and rings, flinging glowing runes that flare and pop into sparks one after another.",
+  tags: ["arcane", "burst", "mana", "rune", "nova", "magic", "ground", "one-shot"],
+  size: [208, 150],
+  origin: [104, 124],
+  duration: 1.8,
+  loop: false,
+  fps: 30,
+  bg: "ground",
+  options: { palette: PAL.arcane, seed: 9 },
+};
+
+function create(o) {
+  const C = fit(o.palette, 8), R = new Rng(o.seed);
+  const ps = new Particles({ rng: R, ground: () => 0, sparks: [WHITE, C[6], C[5], C[4]] }), lights = new Lights();
+  // the runes: flung out round the burst, slowing hard, bobbing while they burn, each popping in its turn
+  const runes = Array.from({ length: N }, (_, i) => {
+    const a = (i / N) * TAU + R.range(-0.25, 0.25) - Math.PI / 2, sp = R.range(150, 210);
+    // thrown less far downward, so the low ones stay clear of the floor
+    return { g: i, x: 0, y: CY, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * (Math.sin(a) > 0 ? 0.42 : 0.85), pop: GATHER + 0.42 + i * 0.065 + R.range(0, 0.05), popped: false, ph: R.range(0, TAU) };
+  });
+  const pops = [];
+  let t = 0, released = false;
+
+  return {
+    update(dt) {
+      t += dt;
+      if (t < GATHER - 0.03) {
+        // the gather: streaks rush in from all round
+        for (let i = 0; i < 2; i++) {
+          const a = R.range(0, TAU), D = R.range(24, 52), T = R.range(0.12, 0.18), v = (D * 3) / (Math.exp(3 * T) - 1);
+          const x = Math.cos(a) * D, y = Math.min(-2, CY + Math.sin(a) * D * 0.85), l = Math.hypot(x, y - CY) || 1;
+          ps.spawn(P.STREAK, x, y, (-x / l) * v, ((CY - y) / l) * v, T, R.chance(0.5) ? C[6] : C[5]);
+        }
+      }
+      if (t >= GATHER && !released) {
+        released = true;
+        lights.add(0, CY - 12, 96, C[5], 1, 0.5);
+        lights.add(0, CY, 40, WHITE, 0.9, 0.1);
+        // a spray of motes and stars, thrown less hard at the floor
+        for (let i = 0; i < 96; i++) {
+          const a = R.range(0, TAU), sp = R.range(100, 250), dn = Math.sin(a) > 0 ? 0.45 : 1;
+          ps.spawn(R.chance(0.65) ? P.MOTE : P.STAR, 0, CY, Math.cos(a) * sp, Math.sin(a) * sp * dn, R.range(0.25, 0.55), R.pick([WHITE, C[6], C[5]]), R.range(0.8, 1.8));
+        }
+        for (let i = 0; i < 20; i++) {
+          const a = R.range(0, TAU), sp = R.range(130, 280);
+          ps.spawn(P.SPARK, 0, CY, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.2, 0.45));
+        }
+      }
+      if (released)
+        for (const r of runes) {
+          if (r.popped) continue;
+          r.vx -= r.vx * 4.2 * dt;
+          r.vy -= r.vy * 4.2 * dt + 8 * dt;
+          r.x += r.vx * dt;
+          r.y += r.vy * dt;
+          if (R.chance(0.35)) ps.spawn(P.MOTE, r.x + R.range(-1.5, 1.5), r.y, r.vx * 0.2 + R.range(-10, 10), r.vy * 0.2 - R.range(5, 25), R.range(0.2, 0.4), C[5], 0.5);
+          if (t >= r.pop) {
+            r.popped = true;
+            pops.push({ t, x: r.x, y: r.y });
+            lights.add(r.x, r.y, 34, C[5], 0.9, 0.22);
+            lights.add(r.x, r.y, 12, WHITE, 0.8, 0.06);
+            for (let i = 0; i < 9; i++) {
+              const a = R.range(0, TAU), sp = R.range(70, 200);
+              ps.spawn(P.SPARK, r.x, r.y, Math.cos(a) * sp, Math.sin(a) * sp - 40, R.range(0.15, 0.4));
+            }
+            for (let i = 0; i < 5; i++) {
+              const a = R.range(0, TAU), sp = R.range(20, 80);
+              ps.spawn(i % 2 ? P.STAR : P.MOTE, r.x, r.y, Math.cos(a) * sp, Math.sin(a) * sp - 20, R.range(0.3, 0.6), R.pick([WHITE, C[6]]), R.range(0.8, 1.6));
+            }
+          }
+        }
+      ps.update(dt);
+      lights.update(dt);
+    },
+    drawBack(p) {
+      // the floor beneath catches the burst
+      const k = t < GATHER ? 0.4 * (t / GATHER) : Math.max(0, 1 - (t - GATHER) / 1.1);
+      if (k > 0) p.glow(0, -1, 50, C[4], 0.3 * k);
+    },
+    draw(p) {
+      if (t < GATHER) {
+        // the point it gathers into: a swelling ball with a white heart
+        const k = t / GATHER, r = 1 + 3.5 * k * k;
+        p.circle(0, CY, r + 1.2, C[4]);
+        p.circle(0, CY, r, C[6]);
+        p.circle(0, CY, r * 0.5, WHITE);
+        p.glow(0, CY, 10 + 20 * k, C[5], 0.4 + 0.4 * k);
+        const q = clamp((t - GATHER * 0.35) / (GATHER * 0.65));
+        if (q > 0 && q < 1) p.ring(0, CY, r + 2 + 16 * (1 - ease.outCubic(q)), 1, q > 0.6 ? WHITE : C[6], 1 - q * 0.5);
+      } else {
+        const q = (t - GATHER) / 0.6;
+        if (q < 1) {
+          const e = ease.outCubic(q);
+          if (q < 0.12) {
+            p.circle(0, CY, 12 * (1 - q / 0.12) + 2, C[5]);
+            p.circle(0, CY, 12 * (1 - q / 0.12), WHITE);
+          }
+          if (q < 0.32) flare(p, 0, CY, 30 * (1 - q / 0.32) + 4, 1 - q / 0.32, C);
+          // the rings, cut off where they meet the floor
+          p.ring(0, CY, 4 + 62 * e, Math.max(1, 5 * (1 - q)), q < 0.2 ? WHITE : C[6], (v, ang) => (CY + Math.sin(ang) * (4 + 62 * e) > 0 ? 0 : 1.2 - q));
+          p.ring(0, CY, 2 + 38 * ease.outCubic(Math.min(1, q * 1.4)), Math.max(1, 2 * (1 - q)), C[5], (v, ang) => (CY + Math.sin(ang) * 40 > 0 ? 0 : 1 - q));
+          p.glow(0, CY, 60 * (0.4 + 0.6 * e), C[5], 0.9 * (1 - q));
+        }
+      }
+      // the runes: white as they fly, settling to lilac, flaring white just before they pop
+      for (const r of runes) {
+        if (!released || r.popped) continue;
+        const left = r.pop - t, hot = t - GATHER < 0.08 || left < 0.06, bob = Math.sin(t * 9 + r.ph) * 0.6;
+        sigil(p, r.g, r.x, r.y + bob, hot ? WHITE : C[6], 1, hot ? C[4] : C[3]);
+        p.glow(r.x, r.y + bob, 10, C[5], hot ? 0.7 : 0.35);
+        if (left < 0.06) sparkle(p, r.x, r.y + bob, 3 + 4 * (1 - left / 0.06), C[6], C[5], 0.5);
+      }
+      // each pop: a small flare and a ring
+      for (const q of pops) {
+        const k = (t - q.t) / 0.32;
+        if (k >= 1) continue;
+        if (k < 0.35) flare(p, q.x, q.y, 11 * (1 - k / 0.35) + 2, 1 - k / 0.35, C);
+        p.ring(q.x, q.y, 2 + 11 * ease.outCubic(k), Math.max(1, 2 * (1 - k)), k < 0.3 ? WHITE : C[6], 1.15 - k);
+      }
+      ps.draw(p);
+      lights.draw(p);
+    },
+  };
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
+
+
+},
+function(__e){
+// Shared by the arcane effects: a dithered light ramp, closed-form motes and streaks for loops, crackling
+// arcs, floor rings and an original rune alphabet. Files starting with _ are helpers, not effects.
+// The dithered ramp (tone) is adapted from Sprite Fusion's open-source black hole
+// (https://www.spritefusion.com/pixel-art-vfx/black-hole), and the arc drawing from its energy
+// (https://www.spritefusion.com/pixel-art-vfx/energy), MIT License, Copyright (c) 2026 Hugo Duprez.
+
+const {scale, clamp, bolt, luma, WHITE} = __r(1);
+
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+const CROSS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+/** The 4x4 ordered-dither threshold (0..1) of the pixel cell holding (x, y). */
+const bayer = (x, y) => BAYER[((Math.floor(y) & 3) << 2) | (Math.floor(x) & 3)];
+
+/**
+ * Light intensity I (0..1) to a step of ramp R (dark to bright), dithering between neighbouring steps so a
+ * gradient reads smooth at 1x; below lo it thins out through the dither and returns 0 (draw nothing).
+ */
+function tone(R, I, x, y, lo = 0.06, sharp = 0) {
+  const b = bayer(x, y);
+  if (I < lo && b > I / lo) return 0;
+  const n = R.length - 1, f = clamp(I) * n;
+  let i = Math.floor(f);
+  // sharp (0..1) narrows the dithered zone between two steps, so broad areas stay clean and only edges dither
+  const q = sharp > 0 ? clamp((f - i - 0.5) / (1 - sharp) + 0.5) : f - i;
+  if (q > b) i = Math.min(n, i + 1);
+  return R[i];
+}
+
+/** A drifting mote at (x, y) moving (vx, vy) px/s, drawn like the sim's MOTE: bright head, darker tail, light. */
+function mote(p, x, y, vx, vy, c, size = 1, k = 1, glow = 0.4) {
+  const sp = Math.hypot(vx, vy) || 1, ux = vx / sp, uy = vy / sp, len = Math.min(16, 0.5 + sp * 0.026) * size, a = k < 0.35 ? k / 0.35 : 1;
+  if (len > 1.2) p.line(x - ux * len, y - uy * len, x - ux * len * 0.35, y - uy * len * 0.35, scale(c, 0.55), a);
+  p.line(x - ux * len * 0.4, y - uy * len * 0.4, x, y, c, a);
+  if (glow > 0) p.glow(x, y, 2.5 + size, c, glow * k);
+}
+
+/** Energy rushing in, drawn like the sim's STREAK: a white tip, a colored body, a dim dotted tail. */
+function streak(p, x, y, vx, vy, c, a = 1, maxLen = 7, glow = 0.4) {
+  const sp = Math.hypot(vx, vy) || 1, ux = vx / sp, uy = vy / sp, L = clamp(sp / 30, 1, maxLen);
+  for (let d = L; d >= 0; d -= 0.5) p.dot(x - ux * d, y - uy * d, d < 1 ? WHITE : d < L * 0.5 ? c : scale(c, 0.6), (d < L * 0.5 ? 1 : 1.2 - d / L) * a);
+  if (glow > 0) p.glow(x, y, 4, c, glow * a);
+}
+
+/**
+ * A crackling arc from (x0, y0) to (x1, y1): a jagged main path plus forks, as [{ pts, w }]. r is an Rng, so
+ * re-seed it every couple of frames for flicker.
+ */
+function arc(r, x0, y0, x1, y1, { jag = 0.3, forks = 1, forkLen = 0.5 } = {}) {
+  const L = Math.hypot(x1 - x0, y1 - y0), depth = Math.max(1, Math.min(5, Math.round(Math.log2(L / 1.5)))), main = bolt(r, x0, y0, x1, y1, { jag, depth });
+  const out = [{ pts: main, w: 1 }];
+  for (let k = 0; k < forks && main.length > 3; k++) {
+    if (r.next() > 0.7) continue;
+    const i = 1 + Math.floor(r.next() * (main.length - 2)), [x, y] = main[i], [px, py] = main[i - 1];
+    const a = Math.atan2(y - py, x - px) + (r.next() < 0.5 ? -1 : 1) * (0.4 + r.next() * 0.6), l = L * forkLen * (0.4 + 0.6 * r.next()) * (1 - i / main.length);
+    if (l > 1.5) out.push({ pts: bolt(r, x, y, x + Math.cos(a) * l, y + Math.sin(a) * l, { jag: jag * 1.1, depth: Math.max(1, depth - 2) }), w: 0.55 });
+  }
+  return out;
+}
+
+/**
+ * Draw arc paths the way Sprite Fusion draws its bolts: a dithered halo while it's fresh, a body beside the
+ * core, a white core, light along the path. cols: { core, body, halo, glow }; k: 1 fresh .. 0 gone.
+ */
+function drawArc(p, paths, cols, k = 1, glowK = 0.5) {
+  const steps = (fn) => {
+    for (const path of paths)
+      for (let i = 0; i < path.pts.length - 1; i++) {
+        const [ax, ay] = path.pts[i], [bx, by] = path.pts[i + 1], l = Math.max(1, Math.hypot(bx - ax, by - ay));
+        for (let d = 0; d <= l; d += 0.5) fn(ax + ((bx - ax) * d) / l, ay + ((by - ay) * d) / l, path, i, d === 0);
+      }
+  };
+  if (k > 0.45) steps((x, y, path) => { if (path.w >= 1) for (const [dx, dy] of CROSS) p.dot(x + dx * 1.5, y + dy * 1.5, cols.halo, (k - 0.45) * 1.6); });
+  if (k > 0.25) steps((x, y, path) => { if (path.w > 0.4) (p.dot(x + 1, y, cols.body), p.dot(x, y + 1, cols.body)); });
+  steps((x, y, path, i, first) => {
+    p.px(x, y, path.w >= 1 && k > 0.3 ? cols.core : cols.body);
+    if (first && i % 3 === 0) p.glow(x, y, (path.w >= 1 ? 9 : 5) * (0.5 + k * 0.5), cols.glow, glowK * k * path.w);
+  });
+}
+
+/**
+ * A ring lying on the floor (or any tilted plane): centre (cx, cy), radius r, squashed by sy, 1 px thick at
+ * any size. c and a may be functions of the angle g around it (sin(g) > 0 is the near side, towards the viewer).
+ * keep(g) picks which part to draw: (g) => Math.sin(g) < 0 is the far half, for drawBack.
+ */
+function floorRing(p, cx, cy, r, sy, c, a = 1, keep = null) {
+  if (r < 0.5) return;
+  const fc = typeof c === "function", fa = typeof a === "function", ry = r * sy;
+  p.shade(cx - r - 1, cy - ry - 1, cx + r + 1, cy + ry + 1, (x, y, o) => {
+    const nx = (x - cx) / r, ny = (y - cy) / Math.max(0.3, ry), d = Math.hypot(nx, ny);
+    if (d < 1e-6) return;
+    const g = Math.hypot(nx / r, ny / Math.max(0.3, ry)) / d;
+    if (Math.abs(d - 1) / g > 0.5) return;
+    const ang = Math.atan2(ny, nx);
+    if (keep && !keep(ang)) return;
+    o.c = fc ? c(ang) : c;
+    o.a = fa ? a(ang) : a;
+  });
+}
+
+// An original rune alphabet: angular 3 x 5 glyphs that stay readable standing upright at 1x.
+const GLYPHS = [
+  [".#.", "#.#", ".#.", ".#.", "#.#"],
+  ["#.#", "#.#", ".#.", "#.#", "#.#"],
+  ["##.", "#.#", "##.", "#..", "#.."],
+  ["#..", "#.#", "###", "#.#", "..#"],
+  [".##", "#..", ".#.", "..#", "##."],
+  ["###", ".#.", "###", ".#.", ".#."],
+  ["#.#", "###", "#.#", "..#", "..#"],
+  [".#.", ".##", ".#.", "##.", ".#."],
+];
+
+/**
+ * Rune i standing on (x, y): its bottom row sits on y, centred on x. c body color, a alpha (dithered), under an
+ * optional darker color drawn a pixel lower so the glyph has a little thickness.
+ */
+function glyph(p, i, x, y, c, a = 1, under = 0) {
+  const g = GLYPHS[((i % GLYPHS.length) + GLYPHS.length) % GLYPHS.length], X = Math.round(x) - 1, Y = Math.round(y) - g.length + 1;
+  if (under) p.sprite(g, {}, X, Y + 1, { tint: under, a });
+  p.sprite(g, {}, X, Y, { tint: c, a });
+}
+
+// Larger original sigils, 5 x 7, for runes that fly or hover on their own.
+const SIGILS = [
+  ["..#..", ".#.#.", "#.#.#", "..#..", ".###.", "..#..", ".#.#."],
+  ["#...#", ".#.#.", "..#..", ".###.", "..#..", ".#.#.", "#...#"],
+  ["#....", "##...", "#.#..", "#..#.", "#.#..", "##...", "#...."],
+  ["..#..", "#.#.#", ".###.", "..#..", "..#..", ".#.#.", "#...#"],
+  ["#.#.#", "#.#.#", "#####", "..#..", "..#..", "..#..", ".###."],
+  ["#...#", "##.##", "#.#.#", "#...#", "#.#.#", "##.##", "#...#"],
+  ["..#..", ".#.#.", "#...#", ".#.#.", "..#..", "..#..", "..#.."],
+  ["#..#.", "#.#..", "##...", "#....", "##...", "#.#..", "#..#."],
+];
+
+/** Sigil i centred on (x, y) in color c, ringed by a 1 px edge in a darker color so it reads against anything. */
+function sigil(p, i, x, y, c, a = 1, edge = 0) {
+  const g = SIGILS[((i % SIGILS.length) + SIGILS.length) % SIGILS.length], X = Math.round(x) - 2, Y = Math.round(y) - 3;
+  if (edge) for (const [dx, dy] of CROSS) p.sprite(g, {}, X + dx, Y + dy, { tint: edge, a });
+  p.sprite(g, {}, X, Y, { tint: c, a });
+}
+
+/** A character's silhouette shaded by how light each pixel is: 1 its dark outline, 2 mid, 3 light (0 empty). */
+function shades(A) {
+  const s = new Uint8Array(A.w * A.h);
+  for (let i = 0; i < s.length; i++) if (A.mask.data[i]) s[i] = A.pixels ? (luma(A.pixels[i]) < 0.24 ? 1 : luma(A.pixels[i]) < 0.62 ? 2 : 3) : 2;
+  return s;
+}
+
+/**
+ * Silhouette A (an actor) squeezed to sx of its width about its middle and shifted by dx: body color on its
+ * pixels, edge color on its dark outline pixels. sh is shades(A). The blink's squeeze, adapted from Sprite Fusion.
+ */
+function squeezed(p, A, sh, sx, body, edge, a = 1, dx = 0) {
+  if (sx <= 0.02) return;
+  const cx = A.x + A.w / 2, half = A.w / 2 + 1;
+  for (let y = 0; y < A.h; y++)
+    for (let x = Math.floor(cx - half * sx); x <= Math.ceil(cx + half * sx); x++) {
+      const i = Math.round(cx + (x + 0.5 - cx) / sx - 0.5) - A.x, v = i < 0 || i >= A.w ? 0 : sh[y * A.w + i];
+      if (v) p.dot(x + dx, A.y + y, v === 1 ? edge : body, a);
+    }
+}
+
+__def(__e, "bayer", () => bayer);
+__def(__e, "tone", () => tone);
+__def(__e, "mote", () => mote);
+__def(__e, "streak", () => streak);
+__def(__e, "arc", () => arc);
+__def(__e, "drawArc", () => drawArc);
+__def(__e, "floorRing", () => floorRing);
+__def(__e, "GLYPHS", () => GLYPHS);
+__def(__e, "glyph", () => glyph);
+__def(__e, "SIGILS", () => SIGILS);
+__def(__e, "sigil", () => sigil);
+__def(__e, "shades", () => shades);
+__def(__e, "squeezed", () => squeezed);
+
+
+},
+function(__e){
+// The streaks pulled in, the rings and lights at the burst and the collapse pop are adapted from Sprite
+// Fusion's open-source black-hole (https://www.spritefusion.com/pixel-art-vfx/black-hole),
+// MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Bits, Lights, P, PF, B, Rng, fit, band, sparkle, flare, clamp, smooth, ease, noise, TAU, WHITE, hex, mix} = __r(1);
+
+const meta = {
+  name: "Spawn portal",
+  desc: "A rift tears open on the floor and swirls, belches violet smoke and sparks, spits a fountain of wisps up out of itself, then twists shut with a pop.",
+  tags: ["spawn", "portal", "summon", "rift", "arcane", "smoke", "ground", "one-shot"],
+  size: [208, 150],
+  origin: [104, 122],
+  duration: 3.8,
+  loop: false,
+  fps: 30,
+  bg: "ground",
+  options: {
+    palette: ["#12081f", "#2a0f4d", "#481b8c", "#7330d0", "#a35cff", "#cf9bff", "#f1dcff", "#ffffff"],
+    width: 28,
+    seed: 6,
+  },
+};
+
+const OPEN = 0.3, BELCH = [0.52, 0.76], BURST = 1.0, SHUT = 1.9, POP = 2.22, SY = 0.34;
+const VOID = hex("#06030b"), FUME = hex("#3a3046"), STONE = ["#1a1424", "#2b2639", "#4a4263", "#6c6488", "#9a91b4"].map(hex), DUST = hex("#5a5070");
+
+// the rift's size over its life: a tear that snaps open past round, breathes, swells as it shuts, then collapses
+function radius(t, RX) {
+  if (t < OPEN) return RX * ease.outBack(clamp(t / OPEN), 2.2);
+  if (t < SHUT) return RX * (1 + 0.035 * Math.sin(t * 9) + 0.1 * Math.exp(-((t - BURST - 0.05) ** 2) / 0.006));
+  const k = clamp((t - SHUT) / (POP - SHUT));
+  return RX * (k < 0.35 ? 1 + 0.1 * Math.sin((k / 0.35) * Math.PI * 0.5) : 1.1 * (1 - Math.pow((k - 0.35) / 0.65, 1.6)));
+}
+// how far the swirl has turned: lazy, then whipping round as it shuts
+const spinAt = (t) => t * 2.4 + 1.5 * smooth(BURST - 0.1, BURST + 0.3, t) + 10 * Math.pow(clamp((t - SHUT) / (POP - SHUT)), 2.2);
+const lipAt = (th, spin) => 1 + 0.05 * noise(th * 3 + spin * 0.6, 5) + 0.035 * noise(th * 8 - spin * 1.3, 9);
+
+// the hole: a void, a lit far wall, three arms of light spiralling down into it
+function hole(p, C, rx, spin, heat, wind = 2.3) {
+  if (rx < 1) return;
+  const ry = rx * SY;
+  p.shade(-rx - 2, -ry - 2, rx + 2, ry + 2, (x, y, out) => {
+    const u = x / rx, v = y / ry, q = Math.hypot(u, v), th = Math.atan2(v, u), lip = lipAt(th, spin);
+    if (q > lip) return;
+    const w = q / lip;
+    // the far inner wall catches the glow from below; the near one is hidden
+    out.c = v < 0 && w > 0.72 ? (w > 0.86 ? C[2] : C[1]) : w > 0.55 ? C[0] : VOID;
+  });
+  const n = Math.max(40, Math.round(rx * 5));
+  for (let i = 0; i < 3; i++)
+    for (let j = 0; j <= n; j++) {
+      const q = 0.14 + 0.82 * (j / n), th = spin + (i * TAU) / 3 - wind * Math.log(q), lip = lipAt(th, spin);
+      const x = Math.cos(th) * q * lip * rx, y = Math.sin(th) * q * lip * ry;
+      const c = q > 0.8 ? (heat > 1.1 ? WHITE : C[6]) : q > 0.55 ? C[5] : q > 0.32 ? C[4] : C[3];
+      p.dot(x, y, c, q > 0.3 ? 1 : q / 0.3);
+      // a fainter strand riding just inside each arm
+      if (q > 0.4 && j % 2 === 0) {
+        const t2 = th - 0.32, x2 = Math.cos(t2) * q * 0.94 * lip * rx, y2 = Math.sin(t2) * q * 0.94 * lip * ry;
+        p.dot(x2, y2, q > 0.7 ? C[4] : C[3], 0.85);
+      }
+    }
+  p.glow(0, 0, rx * 0.45, C[3], 0.35 * heat);
+}
+
+// the lip: a ragged ring of white-hot light, a dark cut outside it; far half behind, near half in front
+function lip(p, C, rx, spin, heat, near) {
+  if (rx < 1) return;
+  const ry = rx * SY, n = Math.ceil(rx * 7);
+  for (let j = 0; j < n; j++) {
+    const th = (j / n) * TAU, s = Math.sin(th);
+    if ((s >= 0) !== near) continue;
+    const l = lipAt(th, spin), x = Math.cos(th) * rx * l, y = s * ry * l, f = noise(th * 9 + spin * 3, 13);
+    p.dot(Math.cos(th) * (rx * l + 1.2), s * (ry * l + 1), C[1]);
+    p.dot(x, y, near ? (f > -0.3 || heat > 1.1 ? WHITE : C[6]) : f > 0.2 ? C[6] : C[5]);
+    if (j % 6 === 0) p.glow(x, y, 7, C[5], (near ? 0.3 : 0.2) * Math.min(1.4, heat));
+  }
+}
+
+function create(o) {
+  const C = fit(o.palette, 8), RX = o.width, R = new Rng(o.seed), floor = () => 0;
+  // violet smoke, dulled toward a smoky grey so it reads as smoke and not as glass
+  const SM = [mix(C[4], FUME, 0.4), mix(C[3], FUME, 0.3), mix(C[5], FUME, 0.55)];
+  const ps = new Particles({ rng: R, ground: floor, sparks: [C[7], C[6], C[5], C[3]] });
+  const rocks = new Bits({ ground: floor }), lights = new Lights();
+  const swirl = [], wisps = [], rings = [];
+  const done = {};
+  let t = 0;
+
+  // a mote riding the swirl on the floor plane, spiralling in
+  const addSwirl = (r0) => swirl.push({ a: R.range(0, TAU), r: r0, w: R.range(2.2, 4), in: R.range(0.3, 0.7), c: R.pick([WHITE, C[6], C[6], C[5]]) });
+  // a streak of light sucked in from the air round the rift
+  const pull = () => {
+    const a = R.range(Math.PI * 1.03, Math.PI * 1.97), D = R.range(40, 86), T = R.range(0.24, 0.42);
+    const x = Math.cos(a) * D * 1.08, y = Math.sin(a) * D * 0.85, l = Math.hypot(x, y), v = (0.6 * l) / (1 - Math.exp(-0.6 * T));
+    ps.spawn(P.MOTE, x, y, (-x / l) * v, (-y / l) * v, T, R.pick([WHITE, C[6], C[5], C[5], C[4]]), R.range(1, 1.7));
+  };
+  const puff = (n, big, sp) => {
+    for (let i = 0; i < n; i++) {
+      const a = R.range(0, TAU), d = R.range(0, 0.55) * RX;
+      ps.spawn(P.SMOKE, Math.cos(a) * d, Math.sin(a) * d * SY - 2, R.range(-1, 1) * sp * 0.6, -R.range(0.4, 1) * sp, R.range(1.2, 2.2) * (big ? 1.15 : 0.8), R.pick(SM), R.range(2.8, 4.6) * (big ? 1.15 : 0.9), big ? R.range(0, 0.3) : R.range(0, 0.1), big ? PF.BIG : 0);
+    }
+  };
+  const sparks = (n, up, spread) => {
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + R.range(-spread, spread), sp = R.range(0.5, 1) * up;
+      ps.spawn(P.SPARK, R.range(-0.5, 0.5) * RX, -1, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.35, 0.8));
+    }
+  };
+  const once = (k, at) => !done[k] && t >= at && (done[k] = true);
+
+  return {
+    update(dt) {
+      t += dt;
+      // the tear pulls dust and light in while it opens, while it's open, and hard while it shuts
+      const shutting = t > SHUT && t < POP;
+      if ((t < OPEN + 0.15 || shutting) && R.chance(0.55)) {
+        const s = R.sign(), D = R.range(RX * 1.3, RX * 2.4), T = R.range(0.18, 0.3), v = (D * 3) / (Math.exp(3 * T) - 1);
+        ps.spawn(P.STREAK, s * D, -R.range(0, 3), -s * v, R.range(-2, 2), T, R.chance(0.5) ? C[6] : C[5]);
+      }
+      if (t > 0.1 && t < POP - 0.1 && R.chance(shutting ? 0.85 : t < BURST ? 0.55 : 0.1)) pull();
+      if (t < POP && t > 0.12 && R.chance(shutting ? 0.5 : 0.25)) addSwirl(R.range(1.1, 1.5));
+      if (once("open", OPEN * 0.7)) {
+        lights.add(0, -8, 50, C[4], 0.75, 0.45);
+        rings.push({ t0: t, life: 0.42, r0: RX * 0.8, r1: RX * 1.9, th: 2.5, hot: true });
+        for (let i = 0; i < 8; i++) ps.spawn(P.DUST, R.sign() * R.range(0.7, 1.1) * RX, -1, R.sign() * R.range(10, 45), -R.range(4, 14), R.range(0.4, 0.7), DUST, R.range(1.5, 3));
+      }
+      // two small belches before the big one: a burp of smoke and a few sparks
+      if (once("b0", BELCH[0])) puff(6, false, 34), sparks(8, 210, 0.55), lights.add(0, -6, 44, C[4], 0.6, 0.3);
+      if (once("b1", BELCH[1])) puff(8, false, 40), sparks(12, 240, 0.6), lights.add(0, -6, 48, C[4], 0.65, 0.3);
+      // the burst: something comes up through it
+      if (once("burst", BURST)) {
+        lights.add(0, -26, 74, C[4], 1, 0.75);
+        lights.add(0, -10, 40, WHITE, 0.85, 0.14);
+        rings.push({ t0: t, life: 0.55, r0: RX * 1.0, r1: RX * 2.5, th: 3.5, hot: true }, { t0: t + 0.06, life: 0.45, r0: RX * 0.8, r1: RX * 1.8, th: 2, hot: false });
+        puff(18, true, 70);
+        sparks(34, 400, 0.8);
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i - 2) * 0.27 + R.range(-0.08, 0.08), sp = R.range(185, 235);
+          wisps.push({ x: R.range(-4, 4), y: -2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: R.range(0.75, 1.0), max: 1, tr: [], acc: 0, ph: R.range(0, TAU) });
+        }
+        for (let i = 0; i < 12; i++)
+          rocks.add({ kind: B.CHUNK, x: R.sign() * R.range(0.75, 1.05) * RX, y: -1, vx: R.range(-100, 100), vy: -R.range(150, 280), g: 1, drag: 0.4, bounce: 0.3, life: R.range(1.3, 1.9), a: R.range(0, TAU), va: R.range(-14, 14), s: R.range(1, 2.4), ramp: STONE });
+        for (let i = 0; i < 14; i++) ps.spawn(P.STAR, R.range(-0.8, 0.8) * RX, -R.range(4, 34), R.range(-30, 30), -R.range(10, 60), R.range(0.5, 1.1), R.pick([WHITE, C[6], C[5]]), R.range(0.8, 2));
+      }
+      // while it's open it keeps venting thin smoke and the odd spark
+      if (t > OPEN && t < SHUT && R.chance(0.16)) puff(1, false, 22);
+      if (t > OPEN && t < SHUT + 0.1 && R.chance(0.06)) sparks(1, 160, 0.4);
+      // the pop when it closes
+      if (once("pop", POP)) {
+        lights.add(0, -4, 50, C[4], 0.95, 0.5);
+        lights.add(0, -2, 28, WHITE, 0.9, 0.12);
+        rings.push({ t0: t, life: 0.35, r0: 2, r1: RX * 1.9, th: 2.5, hot: true });
+        for (let i = 0; i < 18; i++) {
+          const a = R.range(-Math.PI, 0), sp = R.range(90, 270);
+          ps.spawn(P.SPARK, 0, -1, Math.cos(a) * sp, Math.sin(a) * sp * 0.8, R.range(0.25, 0.6));
+        }
+        for (let i = 0; i < 9; i++) {
+          const a = R.range(0, TAU), sp = R.range(30, 95);
+          ps.spawn(P.STAR, 0, -2, Math.cos(a) * sp, Math.sin(a) * sp * 0.5 - 20, R.range(0.4, 0.9), R.pick([WHITE, C[6]]), R.range(0.8, 1.8));
+        }
+        for (let i = 0; i < 6; i++) ps.spawn(P.SMOKE, R.range(-6, 6), -R.range(1, 4), R.range(-34, 34), -R.range(10, 30), R.range(0.8, 1.3), SM[2], R.range(2.5, 4.5));
+        // what's left on the floor: specks of light that twinkle out where the rift was
+        for (let i = 0; i < 14; i++) ps.spawn(P.STAR, R.range(-1, 1) * RX * 0.9, -R.range(0.5, 2), R.range(-4, 4), -R.range(0, 4), R.range(0.6, 1.4), R.pick([C[6], C[5], C[5]]), R.range(0.4, 0.9), R.range(0, 0.25));
+      }
+      for (let i = swirl.length - 1; i >= 0; i--) {
+        const s = swirl[i], k = shutting ? 2.4 : 1;
+        s.a += s.w * k * dt * (1.4 / Math.max(0.3, s.r));
+        s.r -= s.in * k * dt;
+        if (s.r < 0.25 || t > POP) swirl.splice(i, 1);
+      }
+      // the wisps: comets with smoky tails that arc up and out, then burst
+      for (let i = wisps.length - 1; i >= 0; i--) {
+        const w = wisps[i];
+        w.tr.unshift([w.x, w.y]);
+        if (w.tr.length > 12) w.tr.pop();
+        // a wisp bursts when it runs out or comes down on the floor
+        if ((w.life -= dt) <= 0 || (w.vy > 0 && w.y > -2)) {
+          for (let j = 0; j < 8; j++) {
+            const a = R.range(0, TAU), sp = R.range(30, 120);
+            ps.spawn(P.SPARK, w.x, w.y, Math.cos(a) * sp + w.vx * 0.2, Math.sin(a) * sp + w.vy * 0.2, R.range(0.2, 0.5));
+          }
+          ps.spawn(P.STAR, w.x, w.y, 0, -6, 0.45, WHITE, 2.4);
+          lights.add(w.x, w.y, 24, C[5], 0.65, 0.25);
+          wisps.splice(i, 1);
+          continue;
+        }
+        w.vy += 360 * dt;
+        w.vx += Math.sin((w.max - w.life) * 16 + w.ph) * 160 * dt;
+        w.vx -= w.vx * 1.1 * dt;
+        w.vy -= w.vy * 1.1 * dt;
+        w.x += w.vx * dt;
+        w.y += w.vy * dt;
+        for (w.acc += dt; w.acc > 0.03; w.acc -= 0.03) ps.spawn(P.SMOKE, w.x, w.y, w.vx * 0.05, w.vy * 0.05 - 4, R.range(0.6, 1), SM[0], R.range(1.5, 2.4));
+        if (R.chance(0.3)) ps.spawn(P.MOTE, w.x, w.y, -w.vx * 0.2 + R.range(-15, 15), -w.vy * 0.2 + R.range(-15, 15), R.range(0.2, 0.4), C[6], 0.6);
+      }
+      for (let i = rings.length - 1; i >= 0; i--) if (t - rings[i].t0 > rings[i].life) rings.splice(i, 1);
+      rocks.update(dt);
+      for (const b of rocks.list)
+        if (b.rest && !b.dusted) {
+          b.dusted = true;
+          for (let i = 0; i < 2; i++) ps.spawn(P.DUST, b.x + R.range(-1.5, 1.5), -0.5, R.sign() * R.range(6, 30), -R.range(2, 12), R.range(0.3, 0.6), DUST, R.range(1.2, 2.4));
+        }
+      ps.update(dt);
+      lights.update(dt);
+    },
+    drawBack(p) {
+      const rx = radius(t, RX), spin = spinAt(t), heat = 0.85 + 0.15 * Math.sin(t * 7) + 0.6 * Math.exp(-((t - BURST) ** 2) / 0.01);
+      // the floor glows violet round the hole
+      if (t < POP) {
+        p.glow(0, -4, rx * 1.8 + 10, C[4], 0.32 * clamp(rx / RX));
+        // and light wells up out of it into the air
+        p.glowLine(0, -2, 0, -44, rx * 0.7 + 6, C[4], 0.16 * clamp(rx / RX));
+      }
+      // the slit it tears open from
+      if (t < OPEN * 0.6) {
+        const k = t / (OPEN * 0.6), L = RX * 1.1 * ease.outCubic(k);
+        p.line(-L, 0, L, 0, (u) => (Math.abs(u - 0.5) < 0.3 ? WHITE : C[6]));
+        p.glowLine(-L, 0, L, 0, 7, C[5], 0.6);
+      }
+      if (t > OPEN * 0.35 && t < POP) {
+        // the arms wind tighter as it twists shut
+        hole(p, C, rx, spin, heat + 0.4 * smooth(SHUT, POP, t), 2.3 + 2.6 * smooth(SHUT, POP - 0.05, t));
+        lip(p, C, rx, spin, heat, false);
+      }
+      for (const r of rings) ring(p, C, r, t, false);
+      drawSwirl(p, false);
+      ps.draw(p, "back");
+    },
+    draw(p) {
+      const rx = radius(t, RX), spin = spinAt(t), heat = 0.85 + 0.15 * Math.sin(t * 7) + 0.6 * Math.exp(-((t - BURST) ** 2) / 0.01);
+      if (t > OPEN * 0.35 && t < POP) lip(p, C, rx, spin, heat, true);
+      for (const r of rings) ring(p, C, r, t, true);
+      drawSwirl(p, true);
+      // the burst: a column of light shoots up out of the hole, thins and lifts away
+      const b = t - BURST;
+      if (b > 0 && b < 0.45) {
+        const k = b / 0.45, top = -84 * ease.outExpo(clamp(b / 0.14)), bot = -1 - 60 * ease.inQuad(k), w0 = RX * 0.55 * (1 - k * 0.8);
+        p.shade(-w0 - 1, top, w0 + 1, bot, (x, y, out) => {
+          const u = (y - bot) / (top - bot), half = w0 * Math.pow(1 - u, 0.8) * (0.85 + 0.15 * Math.sin(y * 0.7 + t * 40));
+          const d = Math.abs(x) / Math.max(0.5, half);
+          if (d > 1) return;
+          out.c = d < 0.35 ? WHITE : d < 0.7 ? C[6] : C[5];
+        });
+        p.glowLine(0, bot, 0, top, w0 + 12, C[5], 0.55 * (1 - k));
+        if (b < 0.14) flare(p, 0, -4, 36 * (1 - b / 0.14), 1 - b / 0.14, C);
+      }
+      // the collapse: a white point that pops
+      const q = t - POP;
+      if (q > -0.08 && q < 0.25) sparkle(p, 0, -1, Math.round((q < 0 ? 4 : 12) * (1 - clamp(q / 0.25))), WHITE, C[5], 0.7 * (1 - clamp(q / 0.25)));
+      rocks.draw(p);
+      for (const w of wisps) {
+        const k = w.life / w.max;
+        for (let i = 1; i < w.tr.length; i++) {
+          const [x0, y0] = w.tr[i - 1], [x1, y1] = w.tr[i], u = i / w.tr.length;
+          p.line(x0, y0, x1, y1, u < 0.25 ? WHITE : u < 0.55 ? C[6] : C[4], 1.15 - u);
+          if (u < 0.35) p.line(x0 + 1, y0, x1 + 1, y1, C[5], 1);
+        }
+        p.circle(w.x, w.y, 2, C[5]);
+        p.circle(w.x, w.y, 1.2, C[6]);
+        p.px(w.x, w.y, WHITE);
+        p.glow(w.x, w.y, 12, C[5], 0.5 * k + 0.2);
+      }
+      ps.draw(p, "front");
+      lights.draw(p);
+    },
+  };
+
+  function drawSwirl(p, near) {
+    const rx = radius(t, RX);
+    for (const s of swirl) {
+      for (let j = 0; j < 3; j++) {
+        const a = s.a - j * 0.08 * (1.4 / Math.max(0.3, s.r)), x = Math.cos(a) * s.r * rx, y = Math.sin(a) * s.r * rx * SY;
+        if ((Math.sin(a) >= 0) !== near) continue;
+        p.dot(x, y - 0.5, j ? C[5] : s.c, j ? 0.9 - j * 0.3 : 1);
+        if (!j) p.glow(x, y, 3, C[5], 0.35);
+      }
+    }
+  }
+}
+
+// a shock ring on the floor plane: far half behind, near half in front
+function ring(p, C, r, t, near) {
+  const k = (t - r.t0) / r.life;
+  if (k < 0 || k >= 1) return;
+  band(p, 0, 0, r.r0 + (r.r1 - r.r0) * ease.outCubic(k), SY * 0.62, Math.max(1, r.th * (1 - k)), 1.15 - k, C, (g) => (Math.sin(g) >= 0) === near, r.hot && k < 0.15);
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
 
 
 }];

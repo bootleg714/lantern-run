@@ -41,6 +41,13 @@ import * as starIris from "../../vendor/pixelfx/src/fx/transitions/star-iris.js"
 import * as snow from "../../vendor/pixelfx/src/fx/weather/snow.js";
 import * as fallingLeaves from "../../vendor/pixelfx/src/fx/weather/falling-leaves.js";
 import * as fog from "../../vendor/pixelfx/src/fx/weather/fog.js";
+import * as iceSpikes from "../../vendor/pixelfx/src/fx/ice/ice-spikes.js";
+import * as snowflakeBurst from "../../vendor/pixelfx/src/fx/ice/snowflake-burst.js";
+import * as lightningStrike from "../../vendor/pixelfx/src/fx/lightning/lightning-strike.js";
+import * as plasmaExplosion from "../../vendor/pixelfx/src/fx/explosions/plasma-explosion.js";
+import * as manaBurst from "../../vendor/pixelfx/src/fx/arcane/mana-burst.js";
+import * as spawnPortal from "../../vendor/pixelfx/src/fx/spawn/spawn-portal.js";
+import { rasterText, textWidth } from "../../vendor/pixelfx/src/core/font.js";
 
 const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, NA = 4, COLS = AW * NA;
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -113,7 +120,7 @@ const SOLID = (t) => t === GR || t === PL || t === IC;
 const tileAt = (tx, ty) => (tx < 0 || tx >= COLS ? GR : ty < 0 || ty >= ROWS ? E : grid[ty][tx]);
 const solid = (tx, ty) => SOLID(tileAt(tx, ty));
 
-const SPEC = { torches: [], coins: [], enemies: [], hearts: [], potions: [], globes: [], wisps: [], flags: [] };
+const SPEC = { torches: [], coins: [], enemies: [], hearts: [], potions: [], globes: [], wisps: [], flags: [], arenas: [] };
 function buildLevel() {
   for (const r of grid) r.fill(0);
   for (const k in SPEC) SPEC[k] = [];
@@ -138,12 +145,15 @@ function buildLevel() {
     }
     if (a === 1) {
       ground(0, 11); pool(12, 15); ground(16, 27); ground(20, 23, 7); plank(29, 30, 6); ground(32, 40); pool(41, 43); ground(44, 45);
-      plank(36, 39, 5); ground(49, 63); ground(55, 57, 7);
+      plank(36, 39, 5); ground(49, 63);
       SPEC.torches.push(X(5), X(18), X(34), X(51), X(61));
-      coinsRow(12, 15, 104); coinsRow(20, 23, 96); coinsRow(29, 30, 80); coinsRow(41, 43, 104); coinsRow(55, 57, 96);
+      coinsRow(12, 15, 104); coinsRow(20, 23, 96); coinsRow(29, 30, 80); coinsRow(41, 43, 104);
       en("slime", 8, { x0: 5, x1: 11 }); en("skull", 25, { hy: 84 }); en("frog", 33, { x0: 32, x1: 35 });
-      en("slime", 38, { x0: 32, x1: 40 }); en("skull", 47, { hy: 70 }); en("snake", 60, { x0: 58, x1: 62 }); en("slime", 52, { x0: 49, x1: 54 });
+      en("slime", 38, { x0: 32, x1: 40 }); en("skull", 47, { hy: 70 });
       SPEC.hearts.push([X(37), 80]);
+      // mini boss: King Gloop's arena fills the end of Frost Hollow, with a checkpoint just before it
+      SPEC.flags.push(X(44));
+      SPEC.arenas.push({ kind: "gloop", x0: (o + 49) * T, x1: (o + 64) * T, floor: 9 * T });
     }
     if (a === 2) {
       ground(0, 9); lava(10, 14); plank(12, 12, 6); ground(15, 24); ground(19, 21, 7); lava(25, 31); plank(27, 28, 7); plank(30, 30, 5);
@@ -155,14 +165,16 @@ function buildLevel() {
       SPEC.globes.push(X(35));
     }
     if (a === 3) {
-      ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); ground(48, 50, 7);
+      ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); plank(48, 50, 6); plank(56, 58, 6);
       for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
-      SPEC.torches.push(X(4), X(18), X(37), X(53));
-      coinsRow(5, 9, 128); SPEC.coins.push([X(13), 112], [X(14), 100], [X(15), 112]); coinsRow(20, 23, 80); coinsRow(40, 42, 96); coinsRow(48, 50, 96);
+      SPEC.torches.push(X(4), X(18), X(37), X(46), X(61));
+      coinsRow(5, 9, 128); SPEC.coins.push([X(13), 112], [X(14), 100], [X(15), 112]); coinsRow(20, 23, 80); coinsRow(40, 42, 96);
       en("ghost", 11, { gy: 110 }); en("slime", 25, { x0: 17, x1: 29 }); en("eyeball", 29); en("ghost", 38, { gy: 100 });
-      en("eyeball", 45); en("bat", 46, { by: 58, x0: 43, x1: 52 }); en("ghost", 55, { gy: 100 });
-      SPEC.hearts.push([X(21), 96]); SPEC.wisps.push(X(6), X(58));
-      SPEC.chest = X(57);
+      SPEC.hearts.push([X(21), 96], [X(41), 112]); SPEC.wisps.push(X(6));
+      // final boss: the Hollow Eye guards the chest; the two ledges are for stomping it
+      SPEC.flags.push(X(36));
+      SPEC.arenas.push({ kind: "eye", x0: (o + 44) * T, x1: (o + 63) * T, floor: 9 * T });
+      SPEC.chest = X(53);
     }
   }
 }
@@ -286,7 +298,8 @@ function newGame() {
   wisps = SPEC.wisps.map((x) => createFx(wisp, { x, y: surfaceAt(x) - 4, seed: x % 13 }));
   makeTorches();
   enemies = SPEC.enemies.map(makeEnemy);
-  chest = { x: SPEC.chest, y: surfaceAt(SPEC.chest), fx: createFx(chestOpen, { x: SPEC.chest, y: surfaceAt(SPEC.chest) }), opened: false };
+  chest = { x: SPEC.chest, y: surfaceAt(SPEC.chest), fx: createFx(chestOpen, { x: SPEC.chest, y: surfaceAt(SPEC.chest) }), opened: false, hidden: true };
+  arenas = SPEC.arenas.map(makeArena); hazards = [];
   flags = SPEC.flags.map((x, i) => ({ x, y: surfaceAt(x), hit: i === 0 }));
   spawnX = flags[0].x + 10;
   resetHero(spawnX); P.hp = 4;
@@ -393,6 +406,8 @@ function overlapsSolid(x, y, w, h) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (solid(tx, ty)) return { tx, ty };
   // frozen enemies are solid blocks
   for (const e of enemies) if (e.alive && e.frozenT > 0 && PLATFORM_WHEN_FROZEN[e.kind]) { const b = enemyBox(e); if (box([x, y, w, h], b)) return { block: b }; }
+  // a sealed boss arena's rune walls
+  for (const A of arenas) if (A.locked) for (const b of [[A.x0 - 6, -400, 6, 800], [A.x1, -400, 6, 800]]) if (box([x, y, w, h], b)) return { block: b };
   return null;
 }
 const touchesTile = (type) => {
@@ -465,6 +480,13 @@ function cast() {
     const d = Math.hypot(dx, dy);
     if (d < best) { best = d; vx = (dx / d) * speed; vy = (dy / d) * speed; }
   }
+  for (const A of arenas) {
+    if (!A.locked || !bossHittable(A.boss)) continue;
+    const b = bossBox(A.boss), dx = b[0] + b[2] / 2 - hx, dy = b[1] + b[3] / 2 - hy;
+    if (Math.sign(dx) !== P.face || Math.abs(dy) > Math.abs(dx) * 1.2 + 16) continue;
+    const d = Math.hypot(dx, dy);
+    if (d < best + 40) { best = d; vx = (dx / d) * speed; vy = (dy / d) * speed; }
+  }
   const angle = (vx < 0 ? -1 : 1) * Math.atan2(vy, Math.abs(vx));
   const mod = sp.key === "fire" ? fireball : iceLance;
   projectiles.push({ kind: sp.key, x: hx, y: hy, vx, vy, life: sp.key === "fire" ? 1.4 : 1.2, fx: createFx(mod, { x: hx, y: hy, flip: vx < 0, angle, seed: (Math.random() * 99) | 0 }) });
@@ -472,21 +494,23 @@ function cast() {
 function zap(hx, hy) {
   const hit = new Set();
   let from = [hx, hy], range = 150;
+  const targets = enemies.filter((e) => e.alive).map((e) => ({ e, b: enemyBox(e) }));
+  for (const A of arenas) if (A.locked && bossHittable(A.boss)) targets.push({ e: A.boss, arena: A, b: bossBox(A.boss) });
   for (let k = 0; k < 3; k++) {
     let best = null, bd = range;
-    for (const e of enemies) {
-      if (!e.alive || hit.has(e)) continue;
-      const b = enemyBox(e), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2, dx = cx - from[0], dy = cy - from[1];
+    for (const tg of targets) {
+      if (hit.has(tg.e)) continue;
+      const b = tg.b, cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2, dx = cx - from[0], dy = cy - from[1];
       if (k === 0 && Math.sign(dx) !== P.face) continue;
-      if (Math.abs(dy) > 80) continue;
+      if (Math.abs(dy) > (tg.arena ? 110 : 80)) continue;
       const d = Math.hypot(dx, dy);
-      if (d < bd) { bd = d; best = { e, cx, cy }; }
+      if (d < bd) { bd = d; best = { e: tg.e, arena: tg.arena, cx, cy }; }
     }
     if (!best) break;
     hit.add(best.e);
     bolts.push({ a: from, b: [best.cx, best.cy], t: 0.22, seed: Math.random() * 1000 });
     spawn(zapHit, { x: best.cx, y: best.cy, flip: best.cx < from[0] });
-    killEnemy(best.e, "zap");
+    if (best.arena) damageBoss(best.arena, 1, "zap", best.cx, best.cy); else killEnemy(best.e, "zap");
     from = [best.cx, best.cy]; range = 110;
   }
   if (!hit.size) bolts.push({ a: [hx, hy], b: [hx + P.face * 70, hy + (Math.random() - 0.5) * 20], t: 0.18, seed: Math.random() * 1000 });
@@ -520,6 +544,12 @@ function updateProjectiles(dt) {
           if (e.frozenT > 0 || e.kind === "skull") killEnemy(e, "ice");
           else { e.frozenT = 5; e.ice = freezeFx(e); spawn(hitSpark, { x: p.x, y: p.y + 6, flip: p.vx > 0, palette: SPARK_ICE }); score += 20; }
         }
+        break;
+      }
+      if (!gone) for (const A of arenas) {
+        if (!A.locked || !bossHittable(A.boss) || !box([p.x - 7, p.y - 7, 14, 14], bossBox(A.boss))) continue;
+        gone = true;
+        damageBoss(A, 1, p.kind, p.x, p.y);
         break;
       }
     }
@@ -606,6 +636,413 @@ function heroVsEnemies() {
   }
 }
 
+// ---------------- bosses ----------------
+// Level 1 ends in two fights. King Gloop, a crowned frost slime, holds the end of Frost Hollow; the Hollow Eye guards
+// the chest at the end of Haunted Grove. Entering an arena seals it, shows the boss's health bar, and if the hero
+// dies the arena reopens and the boss resets. Both are pixelfx critters drawn at twice their size.
+const BOSS_GRAV = 1100;
+const WHITE7 = ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"];
+const RED7B = ["#2a0606", "#5a0c0c", "#9a1818", "#d43a2a", "#ff6a4a", "#ffb09a", "#ffe8e0"];
+const SHOT_PAL = ["#140620", "#3a0f5e", "#6a1d9c", "#a03ad6", "#d46cf2", "#f2a8ff", "#ffe2ff", "#ffffff"];
+const ROOT_PAL = ["#06141a", "#0c2a30", "#145050", "#1e7a6e", "#34b096", "#7ae8c8", "#d4fff0", "#ffffff"];
+const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+let arenas = [], hazards = [];
+
+function makeGloop(A) {
+  return { kind: "gloop", name: "King Gloop", hp: 14, max: 14, x: (A.x0 + A.x1) / 2 + 40, y: A.floor, vx: 0, vy: 0, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, hops: 0, phase: 1, sx: 1, sy: 1, deathT: 0, big: false };
+}
+function makeEye(A) {
+  const homeY = A.floor - 74;
+  return { kind: "eye", name: "The Hollow Eye", hp: 28, max: 28, x: (A.x0 + A.x1) / 2, cy: A.floor + 40, homeY, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.2, seq: 0, queue: [], stunT: 0,
+    shakeX: 0, tx: 0, deathT: 0, nextPop: 0, boom: false };
+}
+function makeArena(spec) { return { ...spec, locked: false, cleared: false, boss: spec.kind === "gloop" ? makeGloop(spec) : makeEye(spec) }; }
+const setB = (B, s) => { B.state = s; B.t = 0; };
+const bossBox = (B) => B.kind === "gloop"
+  ? [B.x - 23 * B.sx, B.y - 32 * B.sy, 46 * B.sx, 32 * B.sy]
+  : [B.x - 22 + B.shakeX, B.cy - 22, 46, 44];
+const bossHittable = (B) => !["wait", "intro", "dying", "dead"].includes(B.state);
+const lockedArena = () => arenas.find((A) => A.locked) || null;
+
+function lockArena(A) {
+  A.locked = true;
+  const B = A.boss;
+  setB(B, "intro");
+  // clear ordinary enemies out of the arena so it's a one-on-one fight
+  for (const e of enemies) if (e.alive && e.x > A.x0 - 200 && e.x < A.x1 + 40) { e.alive = false; spawn(poof, { x: e.x, y: e.y, palette: SMOKE }); }
+  if (B.kind === "gloop") {
+    say("King Gloop", "Fire melts him. Jump over the frost lines when he lands.", 5000);
+    shake = 0.3;
+  } else {
+    spawn(spawnPortal, { x: B.x, y: A.floor });
+    say("The Hollow Eye", "Zap hits it hardest. Climb the ledges to stomp it.", 5000);
+  }
+}
+function resetArena(A) {
+  A.locked = false;
+  A.boss = A.kind === "gloop" ? makeGloop(A) : makeEye(A);
+  for (const e of enemies) if (e.minion) e.alive = false;
+  hazards = [];
+}
+
+function damageBoss(A, amount, how, px, py) {
+  const B = A.boss;
+  if (!bossHittable(B)) return false;
+  let dmg = amount;
+  if (B.kind === "gloop" && how === "fire") dmg = amount * 2;
+  if (B.kind === "gloop" && how === "ice") dmg = 0;
+  if (B.kind === "eye" && how === "zap") dmg = amount * 2;
+  if (B.kind === "eye" && how === "ice") B.stunT = 1.1;
+  spawn(hitSpark, { x: px, y: py, flip: px < B.x, ...(how === "ice" ? { palette: SPARK_ICE } : how === "zap" ? { palette: SPARK_ZAP } : {}) });
+  if (dmg === 0) { spawn(damageNumber, { x: px, y: py - 10, text: "RESIST", palette: ICE }); return true; }
+  B.hp = Math.max(0, B.hp - dmg); B.flash = 0.12;
+  spawn(damageNumber, { x: px, y: py - 10, text: "-" + dmg, ...(dmg > amount ? { palette: GOLD } : {}) });
+  score += 10 * dmg; shake = Math.max(shake, 0.08);
+  if (B.hp <= 0) { setB(B, "dying"); B.deathT = 0; B.nextPop = 0; hazards = hazards.filter((h) => h.kind !== "strike"); shake = 0.4; }
+  return true;
+}
+
+// ---- King Gloop
+function updateGloop(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  if (B.state !== "air") B.anim += dt;
+  switch (B.state) {
+    case "wait": case "dead": return;
+    case "dying":
+      B.deathT += dt; B.sx = 1 + Math.sin(B.deathT * 45) * 0.06; B.sy = 1 - Math.min(0.35, B.deathT * 0.25);
+      if (B.deathT > 1.3) gloopDefeated(A);
+      return;
+    case "intro":
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.4) setB(B, "idle");
+      break;
+    case "idle":
+      B.dir = hx < B.x ? -1 : 1;
+      B.sx += (1 - B.sx) * Math.min(1, dt * 10); B.sy += (1 - B.sy) * Math.min(1, dt * 10);
+      if (B.t > (B.phase > 1 ? 0.45 : 0.8)) setB(B, "squash");
+      break;
+    case "squash": {
+      const k = Math.min(1, B.t / 0.35);
+      B.sx = 1 + 0.18 * k; B.sy = 1 - 0.25 * k;
+      if (B.t > 0.35) {
+        B.hops++; B.big = B.hops % 3 === 0;
+        const vy = B.big ? -490 : -390, air = (2 * -vy) / BOSS_GRAV, tx = clampN(hx, A.x0 + 34, A.x1 - 34);
+        B.vx = (tx - B.x) / air; B.vy = vy; B.sx = 0.82; B.sy = 1.22;
+        setB(B, "air");
+      }
+      break;
+    }
+    case "air":
+      B.vy += BOSS_GRAV * dt; B.x += B.vx * dt; B.y += B.vy * dt;
+      B.x = clampN(B.x, A.x0 + 26, A.x1 - 26);
+      B.sx += (0.92 - B.sx) * Math.min(1, dt * 6); B.sy += (1.08 - B.sy) * Math.min(1, dt * 6);
+      if (B.vy > 0 && B.y >= A.floor) { B.y = A.floor; gloopLand(A); setB(B, "land"); }
+      break;
+    case "land": {
+      const k = Math.min(1, B.t / 0.3);
+      B.sx = 1.3 - 0.3 * k; B.sy = 0.7 + 0.3 * k;
+      if (B.t > 0.3) setB(B, "idle");
+      break;
+    }
+  }
+  if (B.phase === 1 && B.hp <= B.max / 2 && B.state !== "air") { B.phase = 2; gloopSplit(A); }
+}
+function gloopLand(A) {
+  const B = A.boss, reach = B.big ? 170 : 118, height = B.big ? 34 : 24;
+  shake = B.big ? 0.4 : 0.25;
+  puff(B.x, A.floor, 14, 160, "#e8f4ff");
+  for (const dir of [-1, 1]) {
+    const ox = B.x + dir * 20;
+    hazards.push({ kind: "spikes", ox, dir, reach, floor: A.floor, t: 0, fx: createFx(iceSpikes, { x: ox, y: A.floor, flip: dir < 0, reach, height, seed: (Math.random() * 99) | 0 }) });
+  }
+}
+function gloopSplit(A) {
+  const B = A.boss;
+  B.flash = 0.3; shake = 0.3;
+  say("", "King Gloop splits! Clear the little ones or keep hitting the king.", 3000);
+  for (const dx of [-34, 34]) {
+    const x = clampN(B.x + dx, A.x0 + 24, A.x1 - 24);
+    const e = makeEnemy({ kind: "slime", area: 1, x, x0: A.x0 + 20, x1: A.x1 - 20 });
+    e.minion = true; e.dir = dx < 0 ? -1 : 1;
+    enemies.push(e);
+    spawn(poof, { x, y: A.floor, palette: ICE.slice(1) });
+  }
+}
+function gloopDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  for (const e of enemies) if (e.minion && e.alive) killEnemy(e, "ice");
+  spawn(snowflakeBurst, { x: B.x, y: A.floor });
+  for (const dx of [-18, 0, 18]) spawn(poof, { x: B.x + dx, y: A.floor - (dx ? 4 : 10), palette: ICE.slice(1) });
+  spawn(damageNumber, { x: B.x, y: A.floor - 52, text: "+1500", palette: GOLD });
+  score += 1500; shake = 0.5;
+  hearts.push({ x: B.x, y: A.floor, b: bakeOf(heartPickup, {}, true) });
+  for (let i = 0; i < 6; i++) { const x = B.x - 50 + i * 20; coins.push({ x, y: A.floor - 30 - Math.round(Math.sin((i / 5) * Math.PI) * 18), ph: i * 0.3, b: bakeOf(coinSpin, { seed: 1 + (i % 3) }, true) }); }
+  say("King Gloop melts!", "The way to Ember Depths is open.", 4000);
+}
+const CROWN = ["..y....y....y..", ".yYy..yYy..yYy.", ".yYYyyYYYyyYYy.", ".yYYYYYYYYYYYy.", ".yRYYYYBYYYYRy.", ".yyyyyyyyyyyyy."];
+const CROWN_PAL = { y: 0xff0e5a8a, Y: 0xff4ac8f5, R: 0xff4a34e8, B: 0xfff4c862 };
+function drawGloop(A) {
+  const B = A.boss;
+  if (B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const b = bakeOf(slime, { seed: 1, hop: 0, palette: B.flash > 0 ? WHITE7 : AREAS[1].pal.slime, flip: B.dir < 0 });
+  const top = blitScaled(frame, b, B.anim, B.x, B.y, 2 * B.sx, 2 * B.sy);
+  // the crown rides the top of his head, tipped back while he's in the air
+  const cx = Math.round(B.x - CROWN[0].length + (B.dir < 0 ? 3 : -3)), cy = Math.round(top) - 9 + (B.state === "air" ? 1 : 0);
+  for (let y = 0; y < CROWN.length; y++) for (let x = 0; x < CROWN[0].length; x++) {
+    const ch = CROWN[y][x]; if (ch === ".") continue;
+    for (let k = 0; k < 4; k++) {
+      const px = cx + x * 2 + (k & 1) - frame.ox, py = cy + y * 2 + (k >> 1) - frame.oy;
+      if (px >= 0 && py >= 0 && px < W && py < H) frame.color[py * W + px] = B.flash > 0 ? 0xffffffff : CROWN_PAL[ch];
+    }
+  }
+}
+
+// ---- The Hollow Eye
+function updateEye(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.anim += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt); B.shakeX = 0;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt; B.shakeX = (Math.random() - 0.5) * 6; shake = Math.max(shake, 0.12);
+    if (B.deathT > B.nextPop) { B.nextPop += 0.22; spawn(poof, { x: B.x + (Math.random() - 0.5) * 50, y: B.cy + 10 + (Math.random() - 0.5) * 30, palette: SHOT_PAL.slice(2) }); }
+    if (!B.boom && B.deathT > 1.5) { B.boom = true; spawn(plasmaExplosion, { x: B.x, y: B.cy }); shake = 0.6; }
+    if (B.deathT > 2.1) eyeDefeated(A);
+    return;
+  }
+  B.phase = B.hp > B.max * 0.6 ? 1 : B.hp > B.max * 0.3 ? 2 : 3;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    spawn(manaBurst, { x: B.x, y: B.cy + 24, palette: SHOT_PAL });
+    say("", B.phase === 2 ? "The eye calls up the restless dead!" : "It's diving now. Keep moving!", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  if (B.stunT > 0) { B.stunT -= dt; return; }
+  switch (B.state) {
+    case "intro": {
+      const k = Math.min(1, B.t / 1.6);
+      B.cy = A.floor + 40 + (B.homeY - A.floor - 40) * (1 - (1 - k) ** 3);
+      if (B.t > 2) setB(B, "float");
+      break;
+    }
+    case "float": {
+      const sp = [0, 34, 48, 62][B.phase];
+      B.x += B.dir * sp * dt;
+      if (B.x < A.x0 + 60) B.dir = 1;
+      if (B.x > A.x1 - 60) B.dir = -1;
+      B.cy += (B.homeY + Math.sin(B.t * 1.6) * 8 - B.cy) * Math.min(1, dt * 3);
+      B.atk -= dt;
+      if (B.atk <= 0) eyeAttack(A);
+      break;
+    }
+    case "telegraph":
+      B.shakeX = (Math.random() - 0.5) * 4;
+      if (B.t > 0.7) { B.tx = clampN(hx, A.x0 + 40, A.x1 - 40); setB(B, "dive"); }
+      break;
+    case "dive": {
+      const ty = A.floor - 30, dx = B.tx - B.x, dy = ty - B.cy, d = Math.hypot(dx, dy), step = 300 * dt;
+      if (d <= step) { B.x = B.tx; B.cy = ty; eyeSlam(A); setB(B, "dizzy"); }
+      else { B.x += (dx / d) * step; B.cy += (dy / d) * step; }
+      break;
+    }
+    case "dizzy":
+      if (B.t > 1.7) setB(B, "rise");
+      break;
+    case "rise":
+      B.cy += (B.homeY - B.cy) * Math.min(1, dt * 2.5);
+      if (Math.abs(B.cy - B.homeY) < 2) { setB(B, "float"); B.atk = 0.8; }
+      break;
+  }
+}
+function eyeShot(A, angle) {
+  const B = A.boss, sx = B.x, sy = B.cy + 4, sp = 100 + 15 * B.phase, vx = Math.cos(angle) * sp, vy = Math.sin(angle) * sp;
+  projectiles.push({ kind: "shot", x: sx, y: sy, vx, vy, life: 4, fx: createFx(plasmaShot, { x: sx, y: sy, flip: vx < 0, angle: (vx < 0 ? -1 : 1) * Math.atan2(vy, Math.abs(vx)), palette: SHOT_PAL }) });
+}
+const aimAt = (A) => Math.atan2(P.y + P.h / 2 - (A.boss.cy + 4), P.x + 6 - A.boss.x);
+function strikeAt(A, x) {
+  x = clampN(x, A.x0 + 16, A.x1 - 16);
+  hazards.push({ kind: "strike", x, floor: A.floor, t: 0, fx: createFx(lightningStrike, { x, y: A.floor, seed: (Math.random() * 99) | 0 }) });
+}
+function eyeAttack(A) {
+  const B = A.boss, ph = B.phase, q = (t, f) => B.queue.push({ t, f });
+  const list = ph === 1 ? ["volley", "strike"] : ph === 2 ? ["volley", "summon", "strike", "volley"] : ["dive", "volley", "strike", "summon"];
+  const atk = list[B.seq++ % list.length];
+  B.atk = [0, 2.4, 2.0, 1.7][ph];
+  if (atk === "volley") {
+    if (ph === 1) for (let k = 0; k < 3; k++) q(k * 0.28, () => eyeShot(A, aimAt(A)));
+    else {
+      q(0, () => { const a = aimAt(A); for (let k = -2; k <= 2; k++) eyeShot(A, a + k * 0.3); });
+      if (ph === 3) q(0.7, () => eyeShot(A, aimAt(A)));
+    }
+  } else if (atk === "strike") {
+    const n = ph === 1 ? 1 : ph === 2 ? 2 : 3;
+    for (let k = 0; k < n; k++) q(k * 0.35, () => strikeAt(A, P.x + 6 + (k === 0 ? 0 : (k % 2 ? 1 : -1) * 58)));
+  } else if (atk === "summon") {
+    const alive = enemies.filter((e) => e.minion && e.alive).length;
+    if (alive >= 2) { B.atk = 0.4; return; }
+    const x = P.x + 6 < (A.x0 + A.x1) / 2 ? A.x1 - 50 : A.x0 + 50;
+    spawn(spawnPortal, { x, y: A.floor });
+    q(1.0, () => {
+      const e = makeEnemy({ kind: "ghost", area: 3, x, gy: A.floor - 40, x0: x, x1: x });
+      e.minion = true; enemies.push(e);
+      spawn(poof, { x, y: A.floor - 10, palette: ["#10142a", "#3e4f86", "#a3b8e2", "#d8e4ff", "#ffffff", "#ffffff"] });
+    });
+  } else if (atk === "dive") setB(B, "telegraph");
+}
+function eyeSlam(A) {
+  const B = A.boss;
+  shake = 0.45;
+  puff(B.x, A.floor, 16, 180);
+  for (const dir of [-1, 1]) {
+    const ox = B.x + dir * 18;
+    hazards.push({ kind: "spikes", ox, dir, reach: 96, floor: A.floor, t: 0, fx: createFx(iceSpikes, { x: ox, y: A.floor, flip: dir < 0, reach: 96, height: 22, palette: ROOT_PAL, seed: (Math.random() * 99) | 0 }) });
+  }
+}
+function eyeDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  for (const e of enemies) if (e.minion && e.alive) killEnemy(e, "zap");
+  spawn(manaBurst, { x: chest.x, y: chest.y - 6 });
+  spawn(collectBurst, { x: chest.x, y: chest.y - 4, palette: GOLD });
+  chest.hidden = false;
+  spawn(damageNumber, { x: B.x, y: B.cy - 30, text: "+5000", palette: GOLD });
+  score += 5000; shake = 0.5;
+  say("The Hollow Eye falls!", "Open the chest to finish Level 1.", 5000);
+}
+function drawEye(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && B.boom) return;
+  const pal = B.flash > 0 ? { palette: WHITE7, flesh: WHITE7, iris: WHITE7 } : B.stunT > 0 ? { palette: ICE, flesh: ICE, iris: ICE } : B.state === "telegraph" ? { flesh: RED7B } : {};
+  const b = bakeOf(eyeball, { seed: 2, flip: P.x + 6 < B.x, ...pal });
+  const x = B.x + B.shakeX, feet = B.cy + 96;
+  blitScaled(frame, b, B.anim, x, feet, 2, 2, A.floor + 2);
+  // a violet glow round it, angrier as it weakens, red while it winds up a dive
+  const col = B.state === "telegraph" ? [255, 60, 50] : [170, 80, 255], k0 = 0.35 + 0.15 * (B.phase - 1);
+  addGlow(x, B.cy, 34, col, k0);
+  if (B.state === "dizzy") for (let i = 0; i < 3; i++) {
+    const a = time * 5 + (i * Math.PI * 2) / 3, sx = x + Math.cos(a) * 20, sy = B.cy - 30 + Math.sin(a) * 5;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) plot(sx + dx, sy + dy, 0xff6be2ff);
+  }
+}
+
+// ---- shared
+function plot(x, y, c) { const px = Math.round(x) - frame.ox, py = Math.round(y) - frame.oy; if (px >= 0 && py >= 0 && px < W && py < H) frame.color[py * W + px] = c; }
+function addGlow(x, y, r, [cr, cg, cb], k0) {
+  const gx = Math.round(x) - frame.ox, gy = Math.round(y) - frame.oy, L = frame.light;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const d = Math.hypot(dx, dy); if (d >= r) continue;
+    const px = gx + dx, py = gy + dy; if (px < 0 || py < 0 || px >= W || py >= H) continue;
+    const k = (1 - d / r) ** 2 * k0, i = py * W + px, v = L[i];
+    L[i] = (255 << 24) | (Math.min(255, ((v >>> 16) & 255) + cb * k) << 16) | (Math.min(255, ((v >>> 8) & 255) + cg * k) << 8) | Math.min(255, (v & 255) + cr * k);
+  }
+}
+/** Draw a baked loop frame scaled by (kx, ky) about its origin, placed at world (x, y); returns the top of its solid body (world y). */
+function blitScaled(frame, b, t, x, y, kx, ky, clipY = Infinity) {
+  const f = bakedFrame(b, t);
+  if (f.x1 < 0) return y;
+  const FW = frame.w, FH = frame.h, C = frame.color, L = frame.light, ox = b.ox, oy = b.oy;
+  const dx0 = Math.floor((f.x0 - ox) * kx), dx1 = Math.ceil((f.x1 + 1 - ox) * kx), dy0 = Math.floor((f.y0 - oy) * ky), dy1 = Math.ceil((f.y1 + 1 - oy) * ky);
+  const X = Math.round(x) - frame.ox, Y = Math.round(y) - frame.oy, clip = clipY - frame.oy;
+  let top = Infinity;
+  for (let dy = dy0; dy < dy1; dy++) {
+    let solidRow = 0;
+    const py = Y + dy; if (py < 0 || py >= FH || py >= clip) continue;
+    const sy = Math.floor(dy / ky) + oy; if (sy < f.y0 || sy > f.y1) continue;
+    for (let dx = dx0; dx < dx1; dx++) {
+      const px = X + dx; if (px < 0 || px >= FW) continue;
+      const sx = Math.floor(dx / kx) + ox; if (sx < f.x0 || sx > f.x1) continue;
+      const j = (sy - f.y0) * f.cw + (sx - f.x0), i = py * FW + px, s = f.color[j];
+      if (s) {
+        const a = s >>> 24;
+        if (a === 255) { C[i] = s; if (++solidRow === 8 && dy < top) top = dy; }
+        else if (!C[i]) C[i] = s;
+        else { const k = a / 255, d = C[i]; C[i] = (Math.max(a, d >>> 24) << 24) | (Math.round(((s >>> 16) & 255) * k + ((d >>> 16) & 255) * (1 - k)) << 16) | (Math.round(((s >>> 8) & 255) * k + ((d >>> 8) & 255) * (1 - k)) << 8) | Math.round((s & 255) * k + (d & 255) * (1 - k)); }
+      }
+      const l = f.light[j];
+      if (l & 0xffffff) { const d = L[i]; L[i] = (255 << 24) | (Math.min(255, ((d >>> 16) & 255) + ((l >>> 16) & 255)) << 16) | (Math.min(255, ((d >>> 8) & 255) + ((l >>> 8) & 255)) << 8) | Math.min(255, (d & 255) + (l & 255)); }
+    }
+  }
+  return y + (top === Infinity ? dy0 : top);
+}
+function updateBosses(dt) {
+  for (const A of arenas) {
+    if (!A.locked && !A.cleared && state === "play" && !P.dead && P.x > A.x0 + 16 && P.x < A.x1) lockArena(A);
+    // ordinary enemies stay outside a sealed arena; only the boss's own minions are inside
+    if (A.locked) for (const e of enemies) if (e.alive && !e.minion && e.x > A.x0 - 30 && e.x < A.x1 + 30) e.x = e.x < (A.x0 + A.x1) / 2 ? A.x0 - 30 : A.x1 + 30;
+    if (A.kind === "gloop") updateGloop(A, dt); else updateEye(A, dt);
+  }
+  for (let i = hazards.length - 1; i >= 0; i--) {
+    const h = hazards[i];
+    h.t += dt; h.fx.update(dt);
+    const hcx = P.x + 6, feet = P.y + P.h;
+    if (h.kind === "spikes" && h.t > 0.04 && h.t < 0.52) {
+      const u = Math.min(1, (h.t - 0.04) / 0.44), front = h.ox + h.dir * h.reach * (1 - Math.pow(1 - u, 1.7));
+      if (Math.abs(hcx - front) < 11 && feet > h.floor - 16) hurt(h.fx.options.palette === ROOT_PAL ? "hit" : "ice", front);
+    }
+    if (h.kind === "strike" && h.t > 0.76 && h.t < 1.12 && Math.abs(hcx - h.x) < 16) hurt("hit", h.x);
+    if (h.fx.done()) hazards.splice(i, 1);
+  }
+}
+function heroVsBosses() {
+  if (state !== "play" || P.dead) return;
+  const hb = heroBox();
+  for (const A of arenas) {
+    const B = A.boss;
+    if (!A.locked || !bossHittable(B)) continue;
+    const bb = bossBox(B);
+    if (!box(hb, bb)) continue;
+    if (statusIs("electrified")) {
+      if (B.touchCool <= 0) { spawn(zapHit, { x: P.x + 6, y: P.y + P.h / 2 }); damageBoss(A, 1, "zap", P.x + 6, P.y + P.h / 2); B.touchCool = 0.5; }
+      P.vx = (P.x + 6 < B.x ? -1 : 1) * 160;
+      continue;
+    }
+    if (P.vy > 40 && P.y + P.h - bb[1] < 12 && B.touchCool <= 0) {
+      damageBoss(A, 2, "stomp", P.x + 6, bb[1]);
+      P.vy = down(...JUMP) ? -420 : -300; B.touchCool = 0.25;
+      continue;
+    }
+    hurt(B.kind === "gloop" ? "ice" : "curse", B.x);
+  }
+}
+function drawBosses() {
+  for (const A of arenas) {
+    if (A.x1 < cam - 80 || A.x0 > cam + W + 80) continue;
+    if (A.kind === "gloop") drawGloop(A); else drawEye(A);
+    if (A.locked) for (const wx of [A.x0 - 4, A.x1 + 2]) {
+      // the sealed arena's rune walls: a shimmering column of light
+      const [cr, cg, cb] = A.kind === "gloop" ? [90, 190, 255] : [150, 90, 255];
+      for (let y = A.floor - 150; y < A.floor; y++) {
+        const k = 0.45 + 0.35 * Math.sin(y * 0.35 - time * 9);
+        for (let dx = -2; dx <= 2; dx++) {
+          const px = Math.round(wx + dx) - frame.ox, py = Math.round(y) - frame.oy;
+          if (px < 0 || py < 0 || px >= W || py >= H) continue;
+          const kk = k * (1 - Math.abs(dx) / 3), i = py * W + px, v = frame.light[i];
+          frame.light[i] = (255 << 24) | (Math.min(255, ((v >>> 16) & 255) + cb * kk) << 16) | (Math.min(255, ((v >>> 8) & 255) + cg * kk) << 8) | Math.min(255, (v & 255) + cr * kk);
+          if (dx === 0 && (y + Math.floor(time * 20)) % 9 === 0) frame.color[i] = 0xffffffff;
+        }
+      }
+    }
+  }
+  for (const h of hazards) h.fx.draw(frame);
+}
+function bossBar(g) {
+  const A = lockedArena(); if (!A) return;
+  const B = A.boss; if (B.state === "dead") return;
+  const x = 80, y = 168, w = 160, fill = Math.round((w - 2) * B.hp / B.max);
+  g.fillStyle = "#000"; g.fillRect(x - 1, y - 1, w + 2, 7);
+  g.fillStyle = "#2a1426"; g.fillRect(x, y, w, 5);
+  g.fillStyle = B.kind === "gloop" ? "#4fbcf5" : "#b04ae0"; g.fillRect(x + 1, y + 1, fill, 3);
+  g.fillStyle = B.kind === "gloop" ? "#c8f0ff" : "#f0c0ff"; g.fillRect(x + 1, y + 1, fill, 1);
+  const name = B.name.toUpperCase(), tw = textWidth(name, "mini"), tx = Math.round(160 - tw / 2), ty = y - 8;
+  rasterText(name, "mini", (gx, gy) => { g.fillStyle = "#000"; g.fillRect(tx + gx, ty + gy + 1, 1, 1); });
+  rasterText(name, "mini", (gx, gy) => { g.fillStyle = "#ece4f4"; g.fillRect(tx + gx, ty + gy, 1, 1); });
+}
+
 // ---------------- hero ----------------
 const GRAV = 1000, RUN = 118, ACC = 950, FRIC = 1200, JUMPV = 390;
 function updateHero(dt) {
@@ -654,6 +1091,7 @@ function updateHero(dt) {
         P.attackHit = true;
         const reach = heavy ? 34 : 26, hb = [P.face > 0 ? P.x + P.w : P.x - reach, P.y + 3, reach, P.h - 4];
         for (const e of enemies) if (e.alive && box(hb, enemyBox(e))) { const b = enemyBox(e); spawn(hitSpark, { x: e.x, y: b[1] + b[3] / 2, flip: P.face < 0 }); killEnemy(e, "slash"); }
+        for (const A of arenas) if (A.locked && bossHittable(A.boss) && box(hb, bossBox(A.boss))) { const b = bossBox(A.boss); damageBoss(A, heavy ? 2 : 1, "slash", P.face > 0 ? b[0] + 4 : b[0] + b[2] - 4, b[1] + b[3] / 2); }
       }
     }
   }
@@ -731,12 +1169,12 @@ function updateWorld(dt) {
     f.hit = true; spawnX = f.x + 10;
     spawn(collectBurst, { x: f.x, y: f.y - 8, palette: ["#061412", "#0b2f2b", "#12594a", "#1f8f4f", "#47c752", "#a6f06a", "#f0ffd2", "#ffffff"] });
   }
-  if (!chest.opened && playing && box(hb, [chest.x - 14, chest.y - 18, 28, 18])) {
+  if (!chest.opened && !chest.hidden && playing && box(hb, [chest.x - 14, chest.y - 18, 28, 18])) {
     chest.opened = true; state = "win"; winT = 0; score += 500;
-    say("Stage clear", "Press R or Restart to play again", 0);
+    say("Level 1 clear", "Press R or Restart to play again", 0);
   }
   if (chest.opened) chest.fx.update(dt);
-  if (state === "win") { winT += dt; if (winT > 1.3 && !quest) quest = createFx(questComplete, { x: 0, y: 0, text: "STAGE CLEAR" }); }
+  if (state === "win") { winT += dt; if (winT > 1.3 && !quest) quest = createFx(questComplete, { x: 0, y: 0, text: "LEVEL 1 CLEAR" }); }
   if (quest) { quest.update(dt); quest.options.x = Math.round(cam) + 160; quest.options.y = OY + 58; }
   // entering an area
   const a = areaOfX(P.x + 6);
@@ -750,7 +1188,9 @@ function update(dt) {
   updateHero(dt);
   jumpPressed = castPressed = swapPressed = heavyPressed = rollPressed = dashPressed = magicPressed = false;
   updateEnemies(dt);
+  updateBosses(dt);
   heroVsEnemies();
+  heroVsBosses();
   updateProjectiles(dt);
   updateWorld(dt);
   for (let i = oneShots.length - 1; i >= 0; i--) { oneShots[i].update(dt); if (oneShots[i].done()) oneShots.splice(i, 1); }
@@ -763,6 +1203,7 @@ function update(dt) {
       iris.swapped = true;
       const hp = Math.max(P.hp, 3);
       P = null; resetHero(spawnX); P.hp = hp; P.inv = 1.2;
+      for (const A of arenas) if (A.locked && !A.cleared) resetArena(A);
       cam = Math.max(0, Math.min(COLS * T - W, P.x - 150));
       projectiles = projectiles.filter((p) => p.kind !== "shot");
     }
@@ -770,7 +1211,8 @@ function update(dt) {
     if (iris.fx.done()) iris = null;
   }
 
-  const target = Math.max(0, Math.min(COLS * T - W, P.x + 6 - 150 + P.face * 22));
+  const arena = lockedArena();
+  const target = Math.max(0, Math.min(COLS * T - W, arena ? (arena.x0 + arena.x1) / 2 - W / 2 : P.x + 6 - 150 + P.face * 22));
   cam += (target - cam) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt);
 
@@ -910,6 +1352,7 @@ function hud(g) {
   text(g, "x" + coinCount, 13, 27, "#ffe066");
   const s = String(score).padStart(5, "0");
   text(g, s, W - 6 - s.length * 4, 7, "#ece4f4");
+  bossBar(g);
 }
 
 // ---------------- hamster hero ----------------
@@ -1071,8 +1514,9 @@ function render() {
   for (const co of coins) if (vis(co.x, 24)) blit(frame, co.b, time + co.ph, co.x, co.y + 20);
   for (const h of hearts) if (vis(h.x, 24)) blit(frame, h.b, time, h.x, h.y);
   for (const p of potions) if (vis(p.x, 24)) blit(frame, p.b, time, p.x, p.y);
-  if (vis(chest.x, 90)) chest.fx.draw(frame);
+  if (vis(chest.x, 90) && !chest.hidden) chest.fx.draw(frame);
   for (const e of enemies) if (e.alive && vis(e.x, 60)) { if (e.frozenT > 0) blit(frame, e.ice.b, e.ice.t, e.ice.x, e.ice.y); else blit(frame, enemyBake(e), e.t, e.x, e.y); }
+  drawBosses();
 
   if (P.dead) { if (IS_WARRIOR && WARRIOR_SPRITES) drawHamster(frame); else P.dead.fx.draw(frame); }
   else if (!(iris && !iris.swapped && iris.fx.t > 1.1)) {
@@ -1140,7 +1584,7 @@ function drawBolts() {
 
 // ---------------- loop ----------------
 let last = performance.now(), fpsAcc = 0, fpsN = 0;
-window.__lantern = { get P() { return P; }, get enemies() { return enemies; }, teleport(x, y) { P.x = x; P.y = y != null ? y : Math.min(surfaceAt(x + 6), 144) - 40; P.vy = 0; cam = Math.max(0, x - 150); }, setStatus(k) { setStatus(k); }, perf: { ms: 0 }, get state() { return state; }, get projectiles() { return projectiles; }, kill(n) { P.hp = n; }, face(d) { P.face = d; }, get cam() { return cam; } };
+window.__lantern = { get P() { return P; }, get enemies() { return enemies; }, teleport(x, y) { P.x = x; P.y = y != null ? y : Math.min(surfaceAt(x + 6), 144) - 40; P.vy = 0; cam = Math.max(0, x - 150); }, setStatus(k) { setStatus(k); }, perf: { ms: 0 }, get state() { return state; }, get projectiles() { return projectiles; }, kill(n) { P.hp = n; }, face(d) { P.face = d; }, get cam() { return cam; }, get arenas() { return arenas; }, get hazards() { return hazards; }, get chest() { return chest; }, hitBoss(i, n, how) { return damageBoss(arenas[i], n, how || "slash", arenas[i].boss.x, arenas[i].boss.y || arenas[i].boss.cy); } };
 function loop(now) {
   const dt = Math.max(0, Math.min(1 / 30, (now - last) / 1000)); last = now;
   const t0 = performance.now();

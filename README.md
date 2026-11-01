@@ -1,6 +1,6 @@
 # Lantern Run
 
-A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Run through four areas (Dusk Meadow, Frost Hollow, Ember Depths and Haunted Grove), stomp and blast a bestiary of critters, and reach the chest at the end.
+A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Run through Level 1's four areas (Dusk Meadow, Frost Hollow, Ember Depths and Haunted Grove), stomp and blast a bestiary of critters, beat the mini boss at the end of Frost Hollow and the final boss guarding the chest.
 
 Every enemy, spell, status effect, death, pickup and weather overlay comes from [pixelfx](https://github.com/patch-gg/pixelfx). The ground, trees, props and other backdrops come from free itch.io packs, recolored per area. The Haunted Grove backdrop is original AI-generated artwork.
 
@@ -30,6 +30,17 @@ A controller works too: plug it in (or pair it) and press any button. Anything t
 | Start | Restart |
 
 Controller (standard Xbox-style layout): move with the left stick or D-pad, jump with A, and restart with Start. For Biscuit or the knight, X or B casts, Y or RB selects the next spell, and LB selects the previous spell. For the warrior, X attacks, Y uses a heavy attack, B dodges, RB dashes, RT casts, and LB switches spells. Press a controller button while the game tab is focused to connect.
+
+## Bosses
+
+Level 1 has two boss fights. Walking into a boss arena seals it behind rune walls and shows the boss's health bar; there is a checkpoint flag just before each one, and if the hero dies the boss resets.
+
+| Boss | Where | Attacks | Weak to |
+| --- | --- | --- | --- |
+| King Gloop | End of Frost Hollow | Hops at you; each landing sends frost lines racing along the floor (jump them). Every third hop is a big one. Splits off two slimes at half health. | Fire (double damage). Ice does nothing. |
+| The Hollow Eye | End of Haunted Grove, guarding the chest | Phase 1: aimed orb volleys and lightning strikes. Phase 2: orb spreads, double strikes and ghost summons. Phase 3: dives to the floor, sends root spikes out, then sits dizzy. | Zap (double damage); ice stuns it. Stomp it from the two ledges. |
+
+Stomps do 2 damage, as does the warrior's heavy attack. Both bosses are pixelfx critters (the slime and the eyeball) drawn at twice their size; their attacks use the ice-spikes, lightning-strike, spawn-portal, mana-burst, snowflake-burst and plasma-explosion effects.
 
 ## Project layout
 
