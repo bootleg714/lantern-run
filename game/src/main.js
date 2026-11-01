@@ -4,6 +4,7 @@ import { drawHero, POSES, runPose, MAGE } from "./hero.js";
 import { renderHamster, POSES as HPOSES } from "./hamster.js";
 import { drawKnight, KNIGHT } from "./knight.js";
 import { renderWarrior, WARRIOR_POSES } from "./warrior.js";
+import { loadFreeKnight } from "./free-knight.js";
 
 import * as coinSpin from "../../vendor/pixelfx/src/fx/pickups/coin-spin.js";
 import * as collectBurst from "../../vendor/pixelfx/src/fx/pickups/collect-burst.js";
@@ -51,11 +52,13 @@ const HAM = HERO_KIND === "mage" || IS_KNIGHT ? null : IS_WARRIOR ? "warrior" : 
 const HERO_H = IS_WARRIOR ? 34 : HAM ? 20 : 34;
 const toU32 = (px) => { const out = new Uint32Array(px.length / 4); for (let i = 0; i < out.length; i++) out[i] = px[i * 4 + 3] ? ((px[i * 4 + 3] << 24) | (px[i * 4 + 2] << 16) | (px[i * 4 + 1] << 8) | px[i * 4]) >>> 0 : 0; return out; };
 const HFRAMES = HAM ? Object.fromEntries((IS_WARRIOR ? WARRIOR_POSES : Object.keys(HPOSES)).map((k) => { const f = IS_WARRIOR ? renderWarrior(k) : renderHamster(HAM, k); return [k, { ...f, c: toU32(f.px) }]; })) : null;
-const HAM_ACTOR = HAM ? (() => {
-  const f = HFRAMES.idle, data = new Uint8Array(f.w * f.h);
+let FREE_KNIGHT = null;
+const makeHamActor = (f) => {
+  const data = new Uint8Array(f.w * f.h);
   for (let i = 0; i < data.length; i++) data[i] = f.c[i] ? 1 : 0;
   return { mask: { w: f.w, h: f.h, data }, pixels: f.c, x: -f.ox, y: -f.oy, w: f.w, h: f.h, k: 2, head: IS_WARRIOR ? [0, -36] : [3, -24], chest: IS_WARRIOR ? [0, -22] : [3, -10] };
-})() : null;
+};
+let HAM_ACTOR = HAM ? makeHamActor(HFRAMES.idle) : null;
 
 
 // ---------------- palettes ----------------
@@ -881,8 +884,24 @@ function hamsterPose() {
   if (Math.abs(P.vx) > 15) return "run" + (Math.floor(P.run / 7) % 4);
   return Math.floor(time * 2) % 2 ? "idle2" : "idle";
 }
+function warriorSprite() {
+  if (!FREE_KNIGHT) return HFRAMES[hamsterPose()];
+  let name, index = 0;
+  if (P.dead) { name = "DeathNoMovement"; index = Math.floor(P.dead.t / 0.1); }
+  else if (P.hurtT > 0) name = "Hit";
+  else if (P.rollT > 0) { name = "Roll"; index = Math.floor((0.38 - P.rollT) / 0.38 * 12); }
+  else if (P.dashT > 0) { name = "Dash"; index = Math.floor((0.18 - P.dashT) / 0.09); }
+  else if (P.attackT > 0) {
+    name = P.attackKind === "heavy" || P.attackKind === "attack2" ? "Attack2NoMovement" : "AttackNoMovement";
+    index = Math.floor((P.attackDuration - P.attackT) / P.attackDuration * FREE_KNIGHT[name].length);
+  } else if (!P.onGround) { name = P.vy < 0 ? "Jump" : "Fall"; index = Math.min(2, Math.floor(Math.abs(P.vy) / 120)); }
+  else if (Math.abs(P.vx) > 15) { name = "Run"; index = Math.floor(P.run / 5); }
+  else { name = "Idle"; index = Math.floor(time * 8); }
+  const frames = FREE_KNIGHT[name];
+  return frames[P.dead ? Math.min(index, frames.length - 1) : index % frames.length];
+}
 function drawHamster(frame) {
-  const f = HFRAMES[hamsterPose()], flip = P.face < 0, X = Math.round(P.x + 6), Y = Math.round(P.y + P.h);
+  const f = IS_WARRIOR ? warriorSprite() : HFRAMES[hamsterPose()], flip = P.face < 0, X = Math.round(P.x + 6), Y = Math.round(P.y + P.h);
   const st = P.status ? P.status.fx : null;
   if (st) { st.options.x = X; st.options.y = Y; st.options.flip = flip; st.draw(frame, "back"); }
   const C = frame.color, L = frame.light, FW = frame.w, FH = frame.h;
@@ -894,7 +913,7 @@ function drawHamster(frame) {
     if (px >= 0 && py >= 0 && px < FW && py < FH) C[py * FW + px] = flash ? 0xffffffff : c;
   }
   if (st) st.draw(frame, "front");
-  if (IS_WARRIOR && P.attackT > 0 && P.attackDuration - P.attackT > (P.attackKind === "heavy" ? 0.28 : 0.09)) {
+  if (IS_WARRIOR && !FREE_KNIGHT && P.attackT > 0 && P.attackDuration - P.attackT > (P.attackKind === "heavy" ? 0.28 : 0.09)) {
     const radius = P.attackKind === "heavy" ? 28 : 22;
     for (let j = 0; j <= 12; j++) {
       const theta = -1.0 + j * 0.14, px = X0 + P.face * Math.round(Math.cos(theta) * radius), py = Y0 - 19 + Math.round(Math.sin(theta) * radius);
@@ -1013,7 +1032,7 @@ function render() {
   if (vis(chest.x, 90)) chest.fx.draw(frame);
   for (const e of enemies) if (e.alive && vis(e.x, 60)) { if (e.frozenT > 0) blit(frame, e.ice.b, e.ice.t, e.ice.x, e.ice.y); else blit(frame, enemyBake(e), e.t, e.x, e.y); }
 
-  if (P.dead) P.dead.fx.draw(frame);
+  if (P.dead) { if (IS_WARRIOR && FREE_KNIGHT) drawHamster(frame); else P.dead.fx.draw(frame); }
   else if (!(iris && !iris.swapped && iris.fx.t > 1.1)) {
     const blink = P.inv > 0 && state === "play" && Math.floor(P.inv * 14) % 2 === 0;
     if (HAM) { if (!blink) drawHamster(frame); }
@@ -1089,7 +1108,11 @@ function loop(now) {
   if (fpsN === 60) { window.__lantern.perf.ms = fpsAcc / 60; fpsAcc = 0; fpsN = 0; }
   requestAnimationFrame(loop);
 }
-artReady.then(() => {
+const freeKnightReady = IS_WARRIOR ? loadFreeKnight(window.LANTERN_KNIGHT_SHEETS).then(sheets => {
+  FREE_KNIGHT = sheets;
+  HAM_ACTOR = makeHamActor(sheets.Idle[0]);
+}).catch(err => { console.error("Free Knight sprites could not be loaded; using original warrior.", err); }) : Promise.resolve();
+Promise.all([artReady, freeKnightReady]).then(() => {
   buildLevel(); buildDecor(); newGame();
   last = performance.now();
   requestAnimationFrame(loop);

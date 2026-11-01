@@ -14,7 +14,9 @@ const game = fs.readFileSync(bundle, "utf8");
 const art = fs.readFileSync(path.join(here, "art.json"), "utf8");
 if (game.includes("</script") || art.includes("</script")) throw new Error("a bundle contains </script");
 
-const out = template.replace("/*ART*/null", () => art).replace("/*GAME*/", () => game);
+const knightDir = path.join(here, "art", "free-knight");
+const knightSheets = Object.fromEntries(fs.readdirSync(knightDir).filter(name => name.endsWith(".png")).map(name => [path.basename(name, ".png"), "data:image/png;base64," + fs.readFileSync(path.join(knightDir, name)).toString("base64")]));
+const out = template.replace("/*ART*/null", () => art).replace("/*KNIGHT*/null", () => JSON.stringify(knightSheets)).replace("/*GAME*/", () => game);
 fs.writeFileSync(path.join(here, "..", "index.html"), out);
 fs.rmSync(bundle);
 console.log("wrote index.html", Math.round(out.length / 1024), "KB");

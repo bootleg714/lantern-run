@@ -6,7 +6,7 @@ Every enemy, spell, status effect, death, pickup and weather overlay comes from 
 
 ## Play
 
-Open `index.html` in a browser. It is one self-contained file with no server needed. Choose **Knight** above the controls to try the animated knight; **Warrior** selects a custom-rigged melee fighter, and **Biscuit** switches back. Switching characters restarts the run.
+Open `index.html` in a browser. It is one self-contained file with no server needed. Choose **Knight** above the controls to try the animated knight; **Warrior** selects the animated Fantasy Knight melee fighter, and **Biscuit** switches back. Switching characters restarts the run.
 
 | Key | Action |
 | --- | --- |
@@ -36,7 +36,9 @@ index.html          the built game (open this to play)
 game/
   src/main.js       game loop, level, enemies, spells, status effects, rendering
   src/hamster.js    Biscuit and the other hamster designs, drawn from shapes
-  src/warrior.js    original articulated warrior artwork and poses
+  src/free-knight.js loads and slices the Fantasy Knight animation sheets
+  src/warrior.js    original articulated warrior fallback
+  art/free-knight/  Fantasy Knight sprite sheets used by the warrior
   src/knight.js     the animated knight, built on the pixelfx rig
   src/hero.js       the original rigged mage hero (set window.LANTERN_HERO = "mage" to use him)
   template.html     the page around the game
@@ -72,3 +74,5 @@ python3 game/prep_art.py assets game/art.json
 - Effects: [pixelfx](https://github.com/patch-gg/pixelfx) by Patch, MIT. See `vendor/pixelfx/LICENSE` and `NOTICE.md`.
 - Tiles, trees, props and pine backdrops: [Legacy Fantasy: High Forest](https://anokolisa.itch.io/) by Anokolisa.
 - Haunted Grove backdrop: AI-generated original artwork in `game/art/grove-original.png`.
+
+- Warrior sprites: [Fantasy Knight](https://aamatniekss.itch.io/fantasy-knight-free-pixelart-animated-character) by aamatniekss. The creator permits game use and modification but restricts redistributing assets on their own and use in AI creations; consult the linked license before reuse.
