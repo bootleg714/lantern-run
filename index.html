@@ -38,6 +38,8 @@ canvas#game { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; image-renderin
 .tip { bottom: 7%; font-family: var(--font-display); font-size: clamp(10px, 1.6vw, 14px); color: var(--fg); }
 .bar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between; }
 .keys { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 14px; }
+.actions a { color: var(--fg); text-underline-offset: 3px; }
+.actions a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pad { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.04em; color: var(--gold); border: 1px solid var(--gold); padding: 3px 8px; }
 .pad-keys { margin-top: -6px; }
@@ -70,7 +72,7 @@ td.where { color: var(--muted); white-space: nowrap; }
 <div class="wrap">
   <header>
     <h1>Lantern Run</h1>
-    <p>Four areas, one small blue wizard, every effect from pixelfx</p>
+    <p>Four areas, two heroes, effects from pixelfx</p>
   </header>
 
   <div class="screen">
@@ -94,6 +96,7 @@ td.where { color: var(--muted); white-space: nowrap; }
     </div>
     <div class="actions">
       <span class="pad" id="padStatus" hidden></span>
+      <a href="?hero=wizard">Biscuit</a> <a href="?hero=knight">Knight</a>
       <button id="restartBtn">Restart</button>
     </div>
   </div>
@@ -149,47 +152,50 @@ td.where { color: var(--muted); white-space: nowrap; }
 const {createFrame, clearFrame, createFx, composite, painterFor, resolveOptions} = __r(1);
 const {drawHero, POSES, runPose, MAGE} = __r(16);
 const {renderHamster, POSES: HPOSES} = __r(17);
+const {drawKnight, KNIGHT} = __r(18);
 
-const coinSpin = __r(18);
-const collectBurst = __r(20);
-const heartPickup = __r(21);
-const chestOpen = __r(22);
-const potion = __r(23);
-const poof = __r(24);
-const dissolveBurn = __r(25);
-const shatterDeath = __r(27);
-const disintegrate = __r(28);
-const hitSpark = __r(29);
-const torch = __r(30);
-const fireball = __r(32);
-const iceLance = __r(33);
-const zapHit = __r(35);
-const plasmaBall = __r(37);
-const electrified = __r(38);
-const plasmaShot = __r(39);
-const burning = __r(41);
-const frozen = __r(43);
-const haste = __r(44);
-const cursed = __r(45);
-const slime = __r(46);
-const bat = __r(48);
-const snake = __r(49);
-const frog = __r(50);
-const ghost = __r(51);
-const skull = __r(52);
-const eyeball = __r(53);
-const wisp = __r(54);
-const damageNumber = __r(55);
-const questComplete = __r(57);
-const starIris = __r(58);
-const snow = __r(60);
-const fallingLeaves = __r(62);
-const fog = __r(63);
+const coinSpin = __r(19);
+const collectBurst = __r(21);
+const heartPickup = __r(22);
+const chestOpen = __r(23);
+const potion = __r(24);
+const poof = __r(25);
+const dissolveBurn = __r(26);
+const shatterDeath = __r(28);
+const disintegrate = __r(29);
+const hitSpark = __r(30);
+const torch = __r(31);
+const fireball = __r(33);
+const iceLance = __r(34);
+const zapHit = __r(36);
+const plasmaBall = __r(38);
+const electrified = __r(39);
+const plasmaShot = __r(40);
+const burning = __r(42);
+const frozen = __r(44);
+const haste = __r(45);
+const cursed = __r(46);
+const slime = __r(47);
+const bat = __r(49);
+const snake = __r(50);
+const frog = __r(51);
+const ghost = __r(52);
+const skull = __r(53);
+const eyeball = __r(54);
+const wisp = __r(55);
+const damageNumber = __r(56);
+const questComplete = __r(58);
+const starIris = __r(59);
+const snow = __r(61);
+const fallingLeaves = __r(63);
+const fog = __r(64);
 
 const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, NA = 4, COLS = AW * NA;
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 // ---------------- hero kind: the rigged mage, or a hamster (window.LANTERN_HERO = "lantern" | "wizard" | "scout")
-const HAM = window.LANTERN_HERO === "mage" ? null : window.LANTERN_HERO || "wizard"; // Biscuit is the hero
+const HERO_KIND = new URLSearchParams(window.location.search).get("hero") || window.LANTERN_HERO || "wizard";
+const IS_KNIGHT = HERO_KIND === "knight";
+const HAM = HERO_KIND === "mage" || IS_KNIGHT ? null : (["lantern", "wizard", "scout"].includes(HERO_KIND) ? HERO_KIND : "wizard");
 const HERO_H = HAM ? 20 : 34;
 const toU32 = (px) => { const out = new Uint32Array(px.length / 4); for (let i = 0; i < out.length; i++) out[i] = px[i * 4 + 3] ? ((px[i * 4 + 3] << 24) | (px[i * 4 + 2] << 16) | (px[i * 4 + 1] << 8) | px[i * 4]) >>> 0 : 0; return out; };
 const HFRAMES = HAM ? Object.fromEntries(Object.keys(HPOSES).map((k) => { const f = renderHamster(HAM, k); return [k, { ...f, c: toU32(f.px) }]; })) : null;
@@ -437,7 +443,7 @@ function newGame() {
 // ---------------- input ----------------
 const keys = new Set();
 let jumpPressed = false, castPressed = false, swapPressed = false;
-const JUMP = ["Space", "KeyZ", "ArrowUp", "KeyW", "KeyK", "PadJump"], CAST = ["KeyX", "KeyJ"], SWAP = ["KeyQ", "KeyE", "KeyC"];
+const JUMP = ["Space", "KeyZ", "ArrowUp", "KeyW", "KeyK"], CAST = ["KeyX", "KeyJ"], SWAP = ["KeyQ", "KeyE", "KeyC"];
 const GAME_KEYS = new Set([...JUMP, ...CAST, "ArrowLeft", "ArrowRight", "ArrowDown", "KeyA", "KeyD"]);
 window.addEventListener("keydown", (e) => {
   if (e.target && e.target.tagName === "BUTTON" && (e.code === "Space" || e.code === "Enter")) return;
@@ -467,50 +473,6 @@ hold("tJump", "Space", () => (jumpPressed = true)); hold("tCast", "KeyX", () => 
 document.getElementById("restartBtn").addEventListener("click", () => { newGame(); cv.focus(); });
 const down = (...c) => c.some((k) => keys.has(k));
 
-// ---------------- controller ----------------
-// Any controller the browser maps to the standard layout (Xbox, PlayStation, Switch Pro, most USB pads).
-// A jump, X or B cast, Y or the bumpers switch spell, Start restart; left stick or d-pad to move.
-const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, BACK: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
-const DEADZONE = 0.35;
-let padPrev = [], padName = null;
-const padStatus = document.getElementById("padStatus");
-function setPadStatus(name) {
-  padName = name;
-  if (padStatus) { padStatus.hidden = !name; padStatus.textContent = name ? "Controller connected" : ""; padStatus.title = name || ""; }
-}
-window.addEventListener("gamepadconnected", (e) => { setPadStatus(e.gamepad.id); say("", "Controller connected. A jumps, X casts, Y switches spell.", 3500); });
-window.addEventListener("gamepaddisconnected", () => { const any = navigator.getGamepads && [...navigator.getGamepads()].some((g) => g && g.connected); if (!any) setPadStatus(null); });
-function pollPads() {
-  keys.delete("PadLeft"); keys.delete("PadRight"); keys.delete("PadJump");
-  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-  for (let i = 0; i < pads.length; i++) {
-    const g = pads[i];
-    if (!g || !g.connected) continue;
-    if (!padName) setPadStatus(g.id);
-    const b = (n) => !!(g.buttons[n] && (g.buttons[n].pressed || g.buttons[n].value > 0.5));
-    const prev = padPrev[i] || [];
-    const pressed = (n) => b(n) && !prev[n];
-    const ax = g.axes[0] || 0;
-    if (b(PAD.LEFT) || ax < -DEADZONE) keys.add("PadLeft");
-    if (b(PAD.RIGHT) || ax > DEADZONE) keys.add("PadRight");
-    if (b(PAD.A)) keys.add("PadJump");
-    if (pressed(PAD.A)) jumpPressed = true;
-    if (pressed(PAD.X) || pressed(PAD.B)) castPressed = true;
-    if (pressed(PAD.Y) || pressed(PAD.RB)) swapPressed = true;
-    if (pressed(PAD.LB)) P.spell = (P.spell + SPELLS.length - 1) % SPELLS.length;
-    if (pressed(PAD.START)) newGame();
-    padPrev[i] = g.buttons.map((_, n) => b(n));
-  }
-}
-// a short rumble on controllers that support it
-function rumble(strong, weak, ms) {
-  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-  for (const g of pads) {
-    const v = g && g.vibrationActuator;
-    if (v && v.playEffect) v.playEffect("dual-rumble", { duration: ms, strongMagnitude: strong, weakMagnitude: weak }).catch(() => {});
-  }
-}
-
 // ---------------- helpers ----------------
 const box = (a, b) => a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1];
 const heroBox = () => [P.x, P.y, P.w, P.h];
@@ -534,7 +496,7 @@ function puff(x, y, n, spread, col) {
 function setStatus(kind) {
   if (P.status && P.status.kind === "electrified" && kind !== "electrified") return;
   const s = STATUS[kind];
-  P.status = { kind, t: s.t, mod: s.mod, fx: createFx(s.mod, { actor: HAM_ACTOR || MAGE, seed: 3 }) };
+  P.status = { kind, t: s.t, mod: s.mod, fx: createFx(s.mod, { actor: HAM_ACTOR || (IS_KNIGHT ? KNIGHT : MAGE), seed: 3 }) };
 }
 const statusIs = (k) => P.status && P.status.kind === k;
 
@@ -545,7 +507,6 @@ function hurt(cause, fromX, amount = 1) {
   spawn(hitSpark, { x: P.x + 6, y: P.y + Math.round(P.h * 0.53), flip: P.vx < 0 });
   spawn(damageNumber, { x: P.x + 6, y: P.y - 4, text: "-" + amount });
   shake = 0.25;
-  rumble(0.8, 0.5, 220);
   if (cause === "fire") setStatus("burning");
   if (cause === "ice") setStatus("frozen");
   if (cause === "curse") setStatus("cursed");
@@ -553,7 +514,7 @@ function hurt(cause, fromX, amount = 1) {
 }
 function die(cause) {
   const mod = cause === "fire" ? dissolveBurn : cause === "ice" ? shatterDeath : disintegrate;
-  P.dead = { t: 0, fx: createFx(mod, { actor: HAM_ACTOR || MAGE, x: Math.round(P.x + 6), y: Math.round(P.y + P.h), flip: P.face < 0, seed: 4 }) };
+  P.dead = { t: 0, fx: createFx(mod, { actor: HAM_ACTOR || (IS_KNIGHT ? KNIGHT : MAGE), x: Math.round(P.x + 6), y: Math.round(P.y + P.h), flip: P.face < 0, seed: 4 }) };
   P.status = null; P.vx = 0;
   state = "dying";
 }
@@ -725,7 +686,6 @@ function heroVsEnemies() {
     const feet = P.y + P.h;
     if (STOMPABLE[e.kind] && P.vy > 40 && feet - b[1] < 12) {
       killEnemy(e, "stomp");
-      rumble(0.2, 0.6, 90);
       spawn(hitSpark, { x: e.x, y: b[1] + 4, angle: -Math.PI / 2, aim: 0 });
       P.vy = down(...JUMP) ? -380 : -260;
       continue;
@@ -748,7 +708,7 @@ function updateHero(dt) {
   const speed = RUN * (st === "haste" ? 1.6 : st === "frozen" ? 0.5 : 1);
   const jumpV = JUMPV * (st === "haste" ? 1.1 : st === "frozen" ? 0.78 : 1);
   const acc = P.onIce ? 380 : ACC, fric = P.onIce ? 140 : FRIC;
-  const L = state === "play" && down("ArrowLeft", "KeyA", "PadLeft"), R = state === "play" && down("ArrowRight", "KeyD", "PadRight");
+  const L = state === "play" && down("ArrowLeft", "KeyA"), R = state === "play" && down("ArrowRight", "KeyD");
   const dir = (R ? 1 : 0) - (L ? 1 : 0);
   if (dir) { P.vx += dir * acc * dt * (Math.sign(P.vx) !== dir ? 1.6 : 1); P.face = dir; }
   else { const s = Math.sign(P.vx), m = Math.max(0, Math.abs(P.vx) - fric * dt); P.vx = s * m; }
@@ -920,7 +880,7 @@ const ART = AREAS.map((A, i) => {
     ground: IMG(d.ground), water: d.water ? IMG(d.water) : null,
     bushes: d.bushes.map(IMG), trees: { l: IMG(d.trees.l), m: IMG(d.trees.m) },
     par: { mountains: IMG(d.parallax.mountains), far: IMG(d.parallax.pines_far), near: IMG(d.parallax.pines_near) },
-    forest: d.forest ? IMG(d.forest.image) : null,
+    forest: d.forest ? { far: IMG(d.forest.far), mid: IMG(d.forest.mid), near: IMG(d.forest.near) } : null,
   };
 });
 const PLANK = IMG(DATA.plank);
@@ -975,7 +935,7 @@ function drawBackdrop(g, i, a, c, sy) {
   g.globalAlpha = a;
   g.drawImage(A.sky, 0, 0);
   if (A.forest) {
-    tileX(g, A.forest, c * 0.25, -60 + sy);
+    tileX(g, A.forest.far, c * 0.12, -60 + sy); tileX(g, A.forest.mid, c * 0.25, -60 + sy); tileX(g, A.forest.near, c * 0.42, -60 + sy);
   } else {
     tileX(g, A.par.mountains, c * 0.06, 44 + sy); tileX(g, A.par.far, c * 0.18, 60 + sy); tileX(g, A.par.near, c * 0.36, 84 + sy);
   }
@@ -1152,7 +1112,7 @@ function render() {
   else if (!(iris && !iris.swapped && iris.fx.t > 1.1)) {
     const blink = P.inv > 0 && state === "play" && Math.floor(P.inv * 14) % 2 === 0;
     if (HAM) { if (!blink) drawHamster(frame); }
-    else drawHero(frame, {
+    else (IS_KNIGHT ? drawKnight : drawHero)(frame, {
       x: P.x + 6, y: P.y + P.h, face: P.face, pose: heroPose(), staffForward: P.castT > 0, gem: SPELLS[P.spell].color,
       status: P.status ? P.status.fx : null, statusMod: P.status ? P.status.mod : null, alpha: blink ? 0 : 1,
     });
@@ -1218,7 +1178,6 @@ window.__lantern = { get P() { return P; }, get enemies() { return enemies; }, t
 function loop(now) {
   const dt = Math.max(0, Math.min(1 / 30, (now - last) / 1000)); last = now;
   const t0 = performance.now();
-  pollPads();
   update(dt);
   render();
   fpsAcc += performance.now() - t0; fpsN++;
@@ -4528,10 +4487,251 @@ __def(__e, "renderHamster", () => renderHamster);
 
 },
 function(__e){
+// Knight variant of pixelfx's rigged 24x38 character, posed every frame,
+// with a hat and staff drawn on top. Status effects (burning, frozen, electrified...) are painted on the
+// standing body and carried onto the pose, the same way pixelfx's own act player does it.
+const {posed, STAND, lerpPose} = __r(12);
+const {skeleton} = __r(13);
+const {stockActor, HERO2, DUMMY_PAL, actorAlphaOf} = __r(10);
+const {hex, mix} = __r(3);
+const {createFrame, clearFrame, painterFor} = __r(9);
+
+const RW = 24, RH = 38;
+const INK = hex("#17121f");
+const RAMPS = {
+  hood: ["#e5eff4", "#b7cad4", "#839ba9", "#526978", "#293b4a"].map(hex),
+  skin: ["#d9e8ee", "#a8bbc6", "#6d8696", "#3a5365", "#182c3b"].map(hex),
+  robe: ["#d6e8ee", "#a3bac7", "#708b9b", "#4a6474", "#273e4f"].map(hex),
+  trim: ["#f8dda0", "#d6aa56", "#a47736", "#745022", "#493113"].map(hex),
+  legs: ["#b7cbd3", "#90a7b4", "#607a89", "#3a5362", "#233847"].map(hex),
+  boot: ["#c1d1d4", "#92a6ad", "#617b87", "#3a5260", "#233541"].map(hex),
+};
+const SHADE = {};
+for (const [ch, v] of Object.entries(DUMMY_PAL)) SHADE[hex(v) >>> 0] = { A: 0, B: 1, C: 2, D: 3, E: 2, F: 3, G: 4, J: 4, k: -1, m: -2 }[ch];
+
+// which part of the outfit each pixel of the standing sprite belongs to
+const REGION = new Array(RW * RH).fill("robe");
+for (let r = 0; r < RH; r++)
+  for (let c = 0; c < RW; c++) {
+    let g = "robe";
+    if (r <= 2) g = "hood";
+    else if (r <= 6) g = c >= 12 && r >= 3 ? "skin" : "hood";
+    else if (r <= 8) g = "trim"; // collar
+    else if (r >= 19 && r <= 21 && c >= 5 && c <= 8) g = "skin"; // hand at rest
+    else if (r === 22 || r === 23) g = "trim"; // belt line
+    else if (r >= 28 && r <= 34) g = "legs";
+    else if (r >= 35) g = "boot";
+    REGION[r * RW + c] = g;
+  }
+const EYE = new Set([3 * RW + 13]);
+
+/** A dummy-colored pixel at standing-sprite cell s, in the mage's colors. */
+function recolor(c, s) {
+  const sh = SHADE[c >>> 0];
+  if (sh === -1 || sh === undefined) return c === 0 ? 0 : sh === -1 ? INK : c;
+  if (s >= 0 && EYE.has(s)) return INK;
+  if (sh === -2) return RAMPS.trim[1];
+  const g = s >= 0 ? REGION[s] : "robe";
+  return RAMPS[g][Math.min(4, sh)];
+}
+
+// the standing mage, as an actor any pixelfx effect can take (o.actor)
+const base = stockActor(2);
+const restPx = new Uint32Array(RW * RH);
+HERO2.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== ".") restPx[r * RW + c] = recolor(hex(DUMMY_PAL[ch]), r * RW + c); }));
+const KNIGHT = { ...base, pixels: restPx };
+
+// every standing cell mapped to the nearest cell on the body (as pixelfx's act.js does)
+const REST_MASK = new Uint8Array(RW * RH);
+HERO2.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== ".") REST_MASK[r * RW + c] = 1; }));
+const NEAREST = new Int16Array(RW * RH).fill(-1);
+for (let r = 0; r < RH; r++)
+  for (let c = 0; c < RW; c++) {
+    let best = -1, bd = 1e9;
+    for (let y = Math.max(0, r - 7); y < Math.min(RH, r + 8); y++)
+      for (let x = Math.max(0, c - 7); x < Math.min(RW, c + 8); x++) {
+        const d = (x - c) * (x - c) + (y - r) * (y - r);
+        if (REST_MASK[y * RW + x] && d < bd) { bd = d; best = y * RW + x; }
+      }
+    NEAREST[r * RW + c] = best;
+  }
+const lum = (c) => (0.3 * (c & 255) + 0.59 * ((c >>> 8) & 255) + 0.11 * ((c >>> 16) & 255)) / 255;
+function carry(v, rest, own) {
+  const lv = lum(v);
+  if (lv > 0.9 || v >>> 24 < 255) return v;
+  const k = Math.max(0.45, Math.min(1.5, lum(own) / Math.max(0.08, lum(rest))));
+  const ch = (n) => Math.min(255, Math.round(((v >>> n) & 255) * k));
+  return (255 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
+// recolored pose pixels, cached per pose
+const RECOLOR = new WeakMap();
+function mageColors(r) {
+  let out = RECOLOR.get(r);
+  if (!out) {
+    out = new Uint32Array(r.n);
+    for (let i = 0; i < r.n; i++) out[i] = recolor(r.color[i], r.src[i] >= 0 ? NEAREST[r.src[i]] : -1);
+    RECOLOR.set(r, out);
+  }
+  return out;
+}
+
+// ---- poses
+const POSES = {
+  idle: { ...STAND, fx: 6, fy: -17, bx: -2, by: -16 },
+  idle2: { ...STAND, crouch: 1, fx: 6, fy: -16, bx: -2, by: -15 },
+  run: [
+    { lean: 5, crouch: 2, ffx: 10, ffy: -3, fbx: -9, fby: -7, fx: -5, fy: -19, bx: 10, by: -23 },
+    { lean: 5, crouch: 0, ffx: 3, ffy: -9, fbx: -1, fby: -1, fx: 2, fy: -20, bx: 3, by: -21 },
+    { lean: 5, crouch: 2, ffx: -9, ffy: -7, fbx: 10, fby: -3, fx: 10, fy: -23, bx: -5, by: -19 },
+    { lean: 5, crouch: 0, ffx: -1, ffy: -1, fbx: 3, fby: -9, fx: 3, fy: -21, bx: 2, by: -20 },
+  ],
+  rise: { lean: 1, crouch: 0, ffx: 5, ffy: -11, fbx: -5, fby: -4, fx: 8, fy: -31, bx: -7, by: -27 },
+  fall: { lean: 2, crouch: 0, ffx: 7, ffy: -6, fbx: -6, fby: -9, fx: 10, fy: -26, bx: -9, by: -25 },
+  cast: { lean: 4, crouch: 2, ffx: 9, ffy: -4, fbx: -8, fby: -4, fx: 16, fy: -26, bx: -5, by: -19 },
+  hurt: { lean: -6, crouch: 1, ffx: 4, fbx: -6, fx: -9, fy: -31, bx: -11, by: -27 },
+};
+function runPose(phase) {
+  const R = POSES.run, f = ((phase % 4) + 4) % 4, i = Math.floor(f), u = f - i;
+  return lerpPose(R[i], R[(i + 1) % 4], u);
+}
+
+// ---- hat and staff
+const HAT = [
+  "....kkkk....",
+  "..kkHHHHkk..",
+  ".kHHHHHHHHk.",
+  "kHHHHHHHHHHk",
+  "kHHhHkkkkHHk",
+  "kHHHHkkkkHHk",
+  "kHHHHHHHHHHk",
+  ".kHHTTTTHHk.",
+  "..kkkkkkkk..",
+];
+const HAT_PAL = { k: INK, H: RAMPS.hood[2], h: RAMPS.hood[0], T: RAMPS.trim[1] };
+
+/**
+ * Paint the hero into a frame. h: { x, y (feet, world), face: 1|-1, pose, status (a live fx made with actor: MAGE or null),
+ * statusMod, gem (hex color), staffForward (bool), flash, alpha }.
+ */
+let scratch = null;
+function drawKnight(frame, h) {
+  const W = frame.w, H = frame.h, flip = h.face < 0;
+  const FX = Math.round(h.x) - frame.ox, FY = Math.round(h.y) - frame.oy;
+  const q = h.pose, r = posed(q), cols = mageColors(r);
+  const C = frame.color, L = frame.light;
+  const put = (px, py, c) => { if (px >= 0 && py >= 0 && px < W && py < H && c) C[py * W + px] = c; };
+  const addLight = (px, py, col, k) => {
+    if (px < 0 || py < 0 || px >= W || py >= H) return;
+    const i = py * W + px, d = L[i];
+    L[i] = (255 << 24) | (Math.min(255, ((d >>> 16) & 255) + ((col >>> 16) & 255) * k) << 16) | (Math.min(255, ((d >>> 8) & 255) + ((col >>> 8) & 255) * k) << 8) | Math.min(255, (d & 255) + (col & 255) * k);
+  };
+  const sk = skeleton(q).joints;
+  const J = (name) => { const j = sk[name]; return [FX + (flip ? -j[0] - 1 : j[0]), FY + j[1]]; };
+
+  // the staff, behind the body when held at rest, in front when casting
+  const [hx, hy] = J("handN");
+  const gemC = hex(h.gem || "#ffd27a");
+  // A small steel sword follows the animated hand and points forward while casting.
+  const staff = () => {
+    const dir = flip ? -1 : 1;
+    const dx = h.staffForward ? 1 : 0.35, dy = h.staffForward ? -0.2 : -1;
+    for (let n = -4; n <= 17; n++) {
+      const x = Math.round(hx + dir * dx * n), y = Math.round(hy + dy * n);
+      const color = n < 0 ? RAMPS.boot[4] : n < 3 ? RAMPS.trim[2] : n === 17 ? RAMPS.hood[0] : RAMPS.hood[1];
+      put(x, y, color);
+      if (n >= 3 && n < 16) put(x - dir, y, RAMPS.hood[3]);
+    }
+    for (let n = -2; n <= 2; n++) put(hx + dir * n, hy - 2, RAMPS.trim[1]);
+  };
+  const alpha = h.alpha ?? 1;
+  if (alpha <= 0) return;
+  if (!h.staffForward) staff();
+
+  const paintBody = (colorOf) => {
+    for (let i = 0; i < r.n; i++) {
+      const px = flip ? FX - r.xs[i] - 1 : FX + r.xs[i], py = FY + r.ys[i];
+      if (px < 0 || py < 0 || px >= W || py >= H) continue;
+      const c = colorOf(i);
+      if (c) C[py * W + px] = c;
+    }
+  };
+  if (alpha <= 0) return;
+  if (!h.status) {
+    paintBody((i) => (h.flash ? 0xffffffff : cols[i]));
+  } else {
+    // the status effect paints the standing body in a small scratch frame around the hero
+    const SW = 128, SH = 112;
+    if (!scratch) scratch = { a: createFrame(SW, SH), b: createFrame(SW, SH) };
+    const A = scratch.a, B = scratch.b;
+    for (const f of [A, B]) { f.ox = frame.ox + FX - 64; f.oy = frame.oy + FY - 90; }
+    clearFrame(A); clearFrame(B);
+    const fx = h.status;
+    fx.options.x = Math.round(h.x); fx.options.y = Math.round(h.y); fx.options.flip = flip;
+    fx.draw(A, "back");
+    B.color.set(A.color); B.light.set(A.light);
+    const D = fx.meta.duration ?? 1, tt = fx.meta.loop ? fx.t % D : Math.min(fx.t, D);
+    const aA = actorAlphaOf(h.statusMod, tt, fx.options);
+    // the standing mage under the effect
+    const bx0 = 64, by0 = 90;
+    if (aA > 0) for (let s = 0; s < RW * RH; s++) {
+      if (!restPx[s]) continue;
+      const c = s % RW, rr = (s / RW) | 0, px = flip ? bx0 - (c - 12) - 1 : bx0 + c - 12, py = by0 + rr - RH;
+      B.color[py * SW + px] = restPx[s];
+    }
+    fx.draw(B, "front");
+    // back layer straight in (floor glow, smoke behind)
+    const lean = q.lean ?? 0, cr = q.crouch ?? 0;
+    const shiftOf = (ly) => { const k = Math.max(0, Math.min(1, (-11 - ly) / 7)); return [Math.round(lean * k), Math.round(cr * k)]; };
+    const restAt = (sx, sy) => { const c = (flip ? bx0 - sx - 1 : sx - bx0) + 12, r0 = sy - by0 + RH; return c >= 0 && r0 >= 0 && c < RW && r0 < RH && REST_MASK[r0 * RW + c] === 1; };
+    const copyTo = (buf, sx, sy, s, isLight) => {
+      const [dx, dy] = shiftOf(sy - by0), px = FX - 64 + sx + (flip ? -dx : dx), py = FY - 90 + sy + dy;
+      if (px < 0 || py < 0 || px >= W || py >= H) return;
+      const i = py * W + px;
+      if (isLight) { const d = buf[i]; buf[i] = (255 << 24) | (Math.min(255, ((d >>> 16) & 255) + ((s >>> 16) & 255)) << 16) | (Math.min(255, ((d >>> 8) & 255) + ((s >>> 8) & 255)) << 8) | Math.min(255, (d & 255) + (s & 255)); }
+      else if (s >>> 24 === 255 || !buf[i]) buf[i] = s;
+      else { const k = (s >>> 24) / 255, d = buf[i]; const ch = (n) => Math.round(((s >>> n) & 255) * k + ((d >>> n) & 255) * (1 - k)); buf[i] = (Math.max(s >>> 24, d >>> 24) << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0); }
+    };
+    for (let sy = 0; sy < SH; sy++) for (let sx = 0; sx < SW; sx++) { const c = A.color[sy * SW + sx]; if (c) copyTo(C, sx, sy, c, false); }
+    paintBody((i) => {
+      if (h.flash) return 0xffffffff;
+      const s = r.src[i] >= 0 ? NEAREST[r.src[i]] : -1;
+      if (s < 0) return aA > 0.5 ? cols[i] : 0;
+      const c = s % RW, rr = (s / RW) | 0, sx = flip ? bx0 - (c - 12) - 1 : bx0 + c - 12, sy = by0 + rr - RH;
+      const v = B.color[sy * SW + sx];
+      if (!v) return 0;
+      return v === restPx[s] ? cols[i] : carry(v, restPx[s], cols[i]);
+    });
+    for (let sy = 0; sy < SH; sy++) for (let sx = 0; sx < SW; sx++) {
+      const j = sy * SW + sx;
+      if (B.color[j] && B.color[j] !== A.color[j] && !restAt(sx, sy)) copyTo(C, sx, sy, B.color[j], false);
+      if (B.light[j] & 0xffffff) copyTo(L, sx, sy, B.light[j], true);
+    }
+  }
+
+  // the hat sits on the crown, tipped with the head
+  const [cx, cy] = J("crown"), [nx, ny] = J("head");
+  const hatX = Math.round(cx - (flip ? 6 : 5)), hatY = Math.round(cy - 3);
+  for (let y = 0; y < HAT.length; y++) for (let x = 0; x < 12; x++) {
+    const ch = HAT[y][flip ? x : 11 - x]; // the tip trails behind him
+    if (ch === ".") continue;
+    put(hatX + x, hatY + y, h.flash ? 0xffffffff : HAT_PAL[ch]);
+  }
+  if (h.staffForward) staff();
+}
+
+__def(__e, "KNIGHT", () => KNIGHT);
+__def(__e, "POSES", () => POSES);
+__def(__e, "runPose", () => runPose);
+__def(__e, "drawKnight", () => drawKnight);
+
+
+},
+function(__e){
 // The hover, floor shadow and glints follow Sprite Fusion's open-source pickup
 // (https://www.spritefusion.com/pixel-art-vfx/pickup), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, rand, TAU, WHITE, scale} = __r(1);
-const {Layer, coin3d, glint, blobShadow} = __r(19);
+const {Layer, coin3d, glint, blobShadow} = __r(20);
 
 const meta = {
   name: "Coin spin",
@@ -5012,7 +5212,7 @@ function(__e){
 // The pop (a white flash, a ring snapping out, star sparks with short trails) follows Sprite Fusion's
 // open-source pickup (https://www.spritefusion.com/pixel-art-vfx/pickup), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {Lights, Rng, fit, clamp, ease, TAU, WHITE} = __r(1);
-const {glint} = __r(19);
+const {glint} = __r(20);
 
 const meta = {
   name: "Collect burst",
@@ -5108,7 +5308,7 @@ function(__e){
 // The hover, floor shadow and glints follow Sprite Fusion's open-source pickup
 // (https://www.spritefusion.com/pixel-art-vfx/pickup), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, rand, cycle, TAU, WHITE, hex} = __r(1);
-const {Layer, pillow, heartSdf, glint, blobShadow} = __r(19);
+const {Layer, pillow, heartSdf, glint, blobShadow} = __r(20);
 
 const meta = {
   name: "Heart pickup",
@@ -5182,7 +5382,7 @@ function(__e){
 // The collection pop (white squash, a ring snapping out, star sparks) and the glints follow Sprite Fusion's
 // open-source pickup (https://www.spritefusion.com/pixel-art-vfx/pickup), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {Particles, Lights, P, Rng, fit, flare, clamp, smooth, ease, rand, TAU, WHITE, hex, mix, scale} = __r(1);
-const {Layer, coin, gemlet, glint, pool, blobShadow} = __r(19);
+const {Layer, coin, gemlet, glint, pool, blobShadow} = __r(20);
 
 const meta = {
   name: "Chest open",
@@ -5597,7 +5797,7 @@ function(__e){
 // The bubbles (lit and shaded rims, a highlight, a dotted pop) follow Sprite Fusion's open-source bubbles
 // (https://www.spritefusion.com/pixel-art-vfx/bubbles), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, rand, cycle, TAU, WHITE, hex, mix, scale} = __r(1);
-const {Layer, blobShadow, glint, pool} = __r(19);
+const {Layer, blobShadow, glint, pool} = __r(20);
 
 const meta = {
   name: "Potion",
@@ -5873,7 +6073,7 @@ function(__e){
 // The flames that cool into smoke, the embers and the smouldering glow are adapted from Sprite Fusion's
 // open-source fire (https://www.spritefusion.com/pixel-art-vfx/fire), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {Particles, Lights, P, PF, Rng, fit, clamp, smooth, ease, rand, noise, WHITE, hex, mix, READY} = __r(1);
-const {bodyOf} = __r(26);
+const {bodyOf} = __r(27);
 
 const meta = {
   name: "Dissolve burn",
@@ -6064,7 +6264,7 @@ function(__e){
 // The faceted ice shell, the cracks, and the shards, mist and glints of the burst are adapted from Sprite
 // Fusion's open-source ice (https://www.spritefusion.com/pixel-art-vfx/ice), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {Particles, Bits, Lights, P, B, Rng, fit, crystal, sparkle, clamp, smooth, ease, rand, TAU, WHITE, mix, READY} = __r(1);
-const {bodyOf} = __r(26);
+const {bodyOf} = __r(27);
 
 const meta = {
   name: "Shatter death",
@@ -6357,7 +6557,7 @@ function(__e){
 // adapted from Sprite Fusion's open-source movement (https://www.spritefusion.com/pixel-art-vfx/movement),
 // MIT License, Copyright (c) 2026 Hugo Duprez.
 const {Particles, Lights, P, Rng, fit, band, sparkle, clamp, smooth, ease, rand, noise, noise2, TAU, WHITE, mix, scale, READY} = __r(1);
-const {bodyOf, rimOf} = __r(26);
+const {bodyOf, rimOf} = __r(27);
 
 const meta = {
   name: "Disintegrate",
@@ -6675,7 +6875,7 @@ function(__e){
 // The tongue, lick, flame-puff, smoke and ember recipe is adapted from Sprite Fusion's open-source fire
 // (https://www.spritefusion.com/pixel-art-vfx/fire), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, mix, hex, rand, clamp} = __r(1);
-const {noiseFor, hotFirst, burn} = __r(31);
+const {noiseFor, hotFirst, burn} = __r(32);
 
 const meta = {
   name: "Torch",
@@ -7126,7 +7326,7 @@ function(__e){
 // The flame-puff, smoke and spark recipe is adapted from Sprite Fusion's open-source explosion
 // (https://www.spritefusion.com/pixel-art-vfx/explosion), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, mix, hex, clamp, WHITE, TAU} = __r(1);
-const {noiseFor, pnoise, hotFirst, flameBlade, firePuff, smokePuff, spark, ember, drift, looped, LAYERS} = __r(31);
+const {noiseFor, pnoise, hotFirst, flameBlade, firePuff, smokePuff, spark, ember, drift, looped, LAYERS} = __r(32);
 
 const meta = {
   name: "Fireball",
@@ -7242,7 +7442,7 @@ function(__e){
 // head) is adapted from Sprite Fusion's open-source energy bolt (https://www.spritefusion.com/pixel-art-vfx/energy),
 // MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, cycle, fly, clamp, TAU, WHITE} = __r(1);
-const {blade} = __r(34);
+const {blade} = __r(35);
 
 const meta = {
   name: "Ice lance",
@@ -7718,7 +7918,7 @@ function(__e){
 // The arc's halo-body-core inking, its flicker and the light that strobes as it dies follow Sprite Fusion's
 // open-source lightning (https://www.spritefusion.com/pixel-art-vfx/lightning), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {Particles, Lights, P, Rng, fit, clamp, smooth, rng, TAU, WHITE, hex, mix} = __r(1);
-const {VOLT, zigzag, stroke, crackle} = __r(36);
+const {VOLT, zigzag, stroke, crackle} = __r(37);
 
 const meta = {
   name: "Zap hit",
@@ -8200,7 +8400,7 @@ function(__e){
 // the periodic jolt that throws sparks follow Sprite Fusion's open-source lightning crackle
 // (https://www.spritefusion.com/pixel-art-vfx/lightning), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, rng, cycle, TAU, WHITE, hex, luma} = __r(1);
-const {VOLT, PLASMA, zigzag, crackle, flight, spark} = __r(36);
+const {VOLT, PLASMA, zigzag, crackle, flight, spark} = __r(37);
 
 const meta = {
   name: "Electrified",
@@ -8324,7 +8524,7 @@ function(__e){
 // The layered head, rim rays and trail light follow Sprite Fusion's open-source energy bolt and orb
 // (https://www.spritefusion.com/pixel-art-vfx/energy), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {rng, fit, cycle, TAU, WHITE} = __r(1);
-const {beat, wake, spark} = __r(40);
+const {beat, wake, spark} = __r(41);
 
 const meta = {
   name: "Plasma shot",
@@ -8763,7 +8963,7 @@ function(__e){
 // adapted from Sprite Fusion's open-source fire (https://www.spritefusion.com/pixel-art-vfx/fire),
 // MIT License, Copyright (c) 2026 Hugo Duprez.
 const {cycle, fit, hex, mix, rand, Rng, clamp, WHITE} = __r(1);
-const {shape, colorAt, tnoise, travel, tongue, smoke, ember} = __r(42);
+const {shape, colorAt, tnoise, travel, tongue, smoke, ember} = __r(43);
 const {luma} = __r(1);
 
 const meta = {
@@ -9186,7 +9386,7 @@ __def(__e, "eyes", () => eyes);
 },
 function(__e){
 const {cycle, fit, mix, luma, rand, Rng, clamp, smooth, sparkle, TAU, WHITE} = __r(1);
-const {shape, colorAt, eyes, travel} = __r(42);
+const {shape, colorAt, eyes, travel} = __r(43);
 
 const meta = {
   name: "Frozen",
@@ -9363,7 +9563,7 @@ function(__e){
 // adapted from Sprite Fusion's open-source movement dash (https://www.spritefusion.com/pixel-art-vfx/movement),
 // MIT License, Copyright (c) 2026 Hugo Duprez.
 const {cycle, fit, hex, luma, rand, TAU} = __r(1);
-const {shape, colorAt, travel} = __r(42);
+const {shape, colorAt, travel} = __r(43);
 
 const meta = {
   name: "Haste",
@@ -9476,7 +9676,7 @@ function(__e){
 // adapted from Sprite Fusion's open-source poison (https://www.spritefusion.com/pixel-art-vfx/poison),
 // MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, rand, clamp, luma, mix, smooth, tileFbm, TAU} = __r(1);
-const {shape, colorAt, eyes, icon, bitmap} = __r(42);
+const {shape, colorAt, eyes, icon, bitmap} = __r(43);
 
 const meta = {
   name: "Cursed",
@@ -9623,7 +9823,7 @@ function(__e){
 // Sprite Fusion's open-source poison puddle (https://www.spritefusion.com/pixel-art-vfx/poison),
 // MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, wrap, smooth, seg, ease, lerp, rng, cycle, sparkle, TAU} = __r(1);
-const {Grid, shift, curve, spring, toss, lnoise} = __r(47);
+const {Grid, shift, curve, spring, toss, lnoise} = __r(48);
 
 const meta = {
   name: "Slime",
@@ -10276,7 +10476,7 @@ __def(__e, "bounce", () => bounce);
 },
 function(__e){
 const {fit, hex, mix, clamp, wrap, lerp, sparkle, cycle, TAU} = __r(1);
-const {Grid, shift} = __r(47);
+const {Grid, shift} = __r(48);
 
 const meta = {
   name: "Bat",
@@ -10390,7 +10590,7 @@ __def(__e, "draw", () => draw);
 },
 function(__e){
 const {fit, hex, mix, clamp, wrap, lerp, smooth, cycle, P, TAU} = __r(1);
-const {Grid, Swarm, shift, shadow} = __r(47);
+const {Grid, Swarm, shift, shadow} = __r(48);
 
 const meta = {
   name: "Snake",
@@ -10508,7 +10708,7 @@ __def(__e, "drawBack", () => drawBack);
 },
 function(__e){
 const {fit, hex, mix, clamp, wrap, lerp, smooth, seg, ease, rng, P, TAU} = __r(1);
-const {Grid, Swarm, shift, shadow, toss, spring} = __r(47);
+const {Grid, Swarm, shift, shadow, toss, spring} = __r(48);
 
 const meta = {
   name: "Frog",
@@ -10684,7 +10884,7 @@ __def(__e, "drawBack", () => drawBack);
 },
 function(__e){
 const {fit, clamp, wrap, lerp, rng, cycle, TAU} = __r(1);
-const {Grid, shift, shadow} = __r(47);
+const {Grid, shift, shadow} = __r(48);
 
 const meta = {
   name: "Ghost",
@@ -10821,7 +11021,7 @@ function(__e){
 // layered warm light) is adapted from Sprite Fusion's open-source fire
 // (https://www.spritefusion.com/pixel-art-vfx/fire), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, hex, mix, clamp, wrap, lerp, rand, rng, cycle, fly, P, PF, TAU} = __r(1);
-const {Grid, Swarm, shift, lnoise, tongue, firePuff, shadow, bounce} = __r(47);
+const {Grid, Swarm, shift, lnoise, tongue, firePuff, shadow, bounce} = __r(48);
 
 const meta = {
   name: "Flying skull",
@@ -11048,7 +11248,7 @@ __def(__e, "drawBack", () => drawBack);
 },
 function(__e){
 const {fit, hex, mix, clamp, wrap, lerp, ease, rng, TAU} = __r(1);
-const {Grid, shift, shadow, curve} = __r(47);
+const {Grid, shift, shadow, curve} = __r(48);
 
 const meta = {
   name: "Eyeball",
@@ -11205,7 +11405,7 @@ function(__e){
 // The flame tail, puffs and embers are adapted from Sprite Fusion's open-source fire
 // (https://www.spritefusion.com/pixel-art-vfx/fire), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, wrap, lerp, cycle, fly, P, TAU} = __r(1);
-const {Swarm, shift, lnoise, tongue, firePuff, shadow} = __r(47);
+const {Swarm, shift, lnoise, tongue, firePuff, shadow} = __r(48);
 
 const meta = {
   name: "Wisp",
@@ -11290,7 +11490,7 @@ __def(__e, "drawBack", () => drawBack);
 },
 function(__e){
 const {Particles, Lights, P, Rng, fit, sparkle, clamp, seg, ease, TAU, WHITE, scale} = __r(1);
-const {spell, drawWord} = __r(56);
+const {spell, drawWord} = __r(57);
 
 const meta = {
   name: "Damage number",
@@ -11595,7 +11795,7 @@ __def(__e, "shake", () => shake);
 },
 function(__e){
 const {Particles, Lights, P, Rng, fit, sparkle, clamp, seg, ease, TAU, WHITE, scale} = __r(1);
-const {spell, drawWord, shake} = __r(56);
+const {spell, drawWord, shake} = __r(57);
 
 const meta = {
   name: "Quest complete",
@@ -11769,7 +11969,7 @@ function(__e){
 // The twinkles (spinning glints at the tips, motes shed as it turns) follow Sprite Fusion's open-source sparkle
 // (https://www.spritefusion.com/pixel-art-vfx/sparkle), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {Particles, Lights, P, Rng, PAL, fit, hex, clamp, ease, TAU, WHITE} = __r(1);
-const {W, H, screenMeta, clipTo, glint, rect} = __r(59);
+const {W, H, screenMeta, clipTo, glint, rect} = __r(60);
 
 const meta = screenMeta({
   name: "Star iris",
@@ -12111,7 +12311,7 @@ function(__e){
 // drift for a while) is adapted from Sprite Fusion's open-source snow (https://www.spritefusion.com/pixel-art-vfx/snow),
 // MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, smooth, rand, wrap, mix, TAU, WHITE} = __r(1);
-const {clip, pass, trips} = __r(61);
+const {clip, pass, trips} = __r(62);
 
 const meta = {
   name: "Snow",
@@ -12575,7 +12775,7 @@ function(__e){
 // open-source falling leaves (https://www.spritefusion.com/pixel-art-vfx/falling-leaves), MIT License,
 // Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, rand, wrap, mix, TAU, hex} = __r(1);
-const {clip, rows, trips} = __r(61);
+const {clip, rows, trips} = __r(62);
 
 const meta = {
   name: "Falling leaves",
@@ -12723,7 +12923,7 @@ function(__e){
 // wherever a band's top meets thinner fog) is adapted from Sprite Fusion's open-source fog
 // (https://www.spritefusion.com/pixel-art-vfx/fog), MIT License, Copyright (c) 2026 Hugo Duprez.
 const {fit, clamp, smooth, mix, TAU, WHITE} = __r(1);
-const {rows, field, sample, bayer} = __r(61);
+const {rows, field, sample, bayer} = __r(62);
 
 const meta = {
   name: "Fog",

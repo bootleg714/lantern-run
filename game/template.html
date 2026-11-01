@@ -38,6 +38,8 @@ canvas#game { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; image-renderin
 .tip { bottom: 7%; font-family: var(--font-display); font-size: clamp(10px, 1.6vw, 14px); color: var(--fg); }
 .bar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between; }
 .keys { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 14px; }
+.actions a { color: var(--fg); text-underline-offset: 3px; }
+.actions a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pad { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.04em; color: var(--gold); border: 1px solid var(--gold); padding: 3px 8px; }
 .pad-keys { margin-top: -6px; }
@@ -70,7 +72,7 @@ td.where { color: var(--muted); white-space: nowrap; }
 <div class="wrap">
   <header>
     <h1>Lantern Run</h1>
-    <p>Four areas, one small blue wizard, every effect from pixelfx</p>
+    <p>Four areas, two heroes, effects from pixelfx</p>
   </header>
 
   <div class="screen">
@@ -94,6 +96,7 @@ td.where { color: var(--muted); white-space: nowrap; }
     </div>
     <div class="actions">
       <span class="pad" id="padStatus" hidden></span>
+      <a href="?hero=wizard">Biscuit</a> <a href="?hero=knight">Knight</a>
       <button id="restartBtn">Restart</button>
     </div>
   </div>

@@ -2,6 +2,7 @@
 import { createFrame, clearFrame, createFx, composite, painterFor, resolveOptions } from "../../vendor/pixelfx/src/core/index.js";
 import { drawHero, POSES, runPose, MAGE } from "./hero.js";
 import { renderHamster, POSES as HPOSES } from "./hamster.js";
+import { drawKnight, KNIGHT } from "./knight.js";
 
 import * as coinSpin from "../../vendor/pixelfx/src/fx/pickups/coin-spin.js";
 import * as collectBurst from "../../vendor/pixelfx/src/fx/pickups/collect-burst.js";
@@ -42,7 +43,9 @@ import * as fog from "../../vendor/pixelfx/src/fx/weather/fog.js";
 const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, NA = 4, COLS = AW * NA;
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 // ---------------- hero kind: the rigged mage, or a hamster (window.LANTERN_HERO = "lantern" | "wizard" | "scout")
-const HAM = window.LANTERN_HERO === "mage" ? null : window.LANTERN_HERO || "wizard"; // Biscuit is the hero
+const HERO_KIND = new URLSearchParams(window.location.search).get("hero") || window.LANTERN_HERO || "wizard";
+const IS_KNIGHT = HERO_KIND === "knight";
+const HAM = HERO_KIND === "mage" || IS_KNIGHT ? null : (["lantern", "wizard", "scout"].includes(HERO_KIND) ? HERO_KIND : "wizard");
 const HERO_H = HAM ? 20 : 34;
 const toU32 = (px) => { const out = new Uint32Array(px.length / 4); for (let i = 0; i < out.length; i++) out[i] = px[i * 4 + 3] ? ((px[i * 4 + 3] << 24) | (px[i * 4 + 2] << 16) | (px[i * 4 + 1] << 8) | px[i * 4]) >>> 0 : 0; return out; };
 const HFRAMES = HAM ? Object.fromEntries(Object.keys(HPOSES).map((k) => { const f = renderHamster(HAM, k); return [k, { ...f, c: toU32(f.px) }]; })) : null;
@@ -343,7 +346,7 @@ function puff(x, y, n, spread, col) {
 function setStatus(kind) {
   if (P.status && P.status.kind === "electrified" && kind !== "electrified") return;
   const s = STATUS[kind];
-  P.status = { kind, t: s.t, mod: s.mod, fx: createFx(s.mod, { actor: HAM_ACTOR || MAGE, seed: 3 }) };
+  P.status = { kind, t: s.t, mod: s.mod, fx: createFx(s.mod, { actor: HAM_ACTOR || (IS_KNIGHT ? KNIGHT : MAGE), seed: 3 }) };
 }
 const statusIs = (k) => P.status && P.status.kind === k;
 
@@ -361,7 +364,7 @@ function hurt(cause, fromX, amount = 1) {
 }
 function die(cause) {
   const mod = cause === "fire" ? dissolveBurn : cause === "ice" ? shatterDeath : disintegrate;
-  P.dead = { t: 0, fx: createFx(mod, { actor: HAM_ACTOR || MAGE, x: Math.round(P.x + 6), y: Math.round(P.y + P.h), flip: P.face < 0, seed: 4 }) };
+  P.dead = { t: 0, fx: createFx(mod, { actor: HAM_ACTOR || (IS_KNIGHT ? KNIGHT : MAGE), x: Math.round(P.x + 6), y: Math.round(P.y + P.h), flip: P.face < 0, seed: 4 }) };
   P.status = null; P.vx = 0;
   state = "dying";
 }
@@ -959,7 +962,7 @@ function render() {
   else if (!(iris && !iris.swapped && iris.fx.t > 1.1)) {
     const blink = P.inv > 0 && state === "play" && Math.floor(P.inv * 14) % 2 === 0;
     if (HAM) { if (!blink) drawHamster(frame); }
-    else drawHero(frame, {
+    else (IS_KNIGHT ? drawKnight : drawHero)(frame, {
       x: P.x + 6, y: P.y + P.h, face: P.face, pose: heroPose(), staffForward: P.castT > 0, gem: SPELLS[P.spell].color,
       status: P.status ? P.status.fx : null, statusMod: P.status ? P.status.mod : null, alpha: blink ? 0 : 1,
     });

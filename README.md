@@ -6,7 +6,7 @@ Every enemy, spell, status effect, death, pickup and weather overlay comes from 
 
 ## Play
 
-Open `index.html` in a browser. It is one self-contained file with no server needed.
+Open `index.html` in a browser. It is one self-contained file with no server needed. Choose **Knight** above the controls to try the animated knight; **Biscuit** switches back. Switching characters restarts the run.
 
 | Key | Action |
 | --- | --- |
@@ -34,6 +34,7 @@ index.html          the built game (open this to play)
 game/
   src/main.js       game loop, level, enemies, spells, status effects, rendering
   src/hamster.js    Biscuit and the other hamster designs, drawn from shapes
+  src/knight.js     the animated knight, built on the pixelfx rig
   src/hero.js       the original rigged mage hero (set window.LANTERN_HERO = "mage" to use him)
   template.html     the page around the game
   art.json          sliced and recolored tiles, trees, props and backdrops

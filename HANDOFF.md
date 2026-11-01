@@ -1,4 +1,4 @@
-﻿# Lantern Run handoff
+# Lantern Run handoff
 
 ## Recent changes
 
@@ -16,3 +16,9 @@
 - Play through Haunted Grove and check the scrolling seam and transition, especially while moving at different speeds. Check performance on the target machine.
 - Rebuild with `node game/build.mjs` after changing code or `game/art.json`. Full art regeneration with `python game/prep_art.py <assets-dir> game/art.json` also requires the Legacy Fantasy source pack, Pillow, and NumPy.
 - The other asset packs retain their own licenses and credits; review their terms before distributing the game or assets.
+
+## Knight character
+
+- Added an optional knight based on the existing pixelfx rig, with idle, run, jump, fall, casting and hurt poses. Use the Knight and Biscuit links above the controls; switching reloads and restarts the run. Biscuit remains the default. The knight retains the existing magic spells and controls.
+- `game/src/knight.js` renders the knight and supplies its status/death actor. The rig uses the existing pixelfx license and notice. The knight uses the existing taller mage collision box. Check animation, spell origins, status/death effects, and tight platforms in play on target hardware.
+- The build passed and a headless browser preview showed the knight in its idle pose. Animation and gameplay behavior still need hands-on testing.
