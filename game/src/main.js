@@ -48,6 +48,11 @@ import * as plasmaExplosion from "../../vendor/pixelfx/src/fx/explosions/plasma-
 import * as manaBurst from "../../vendor/pixelfx/src/fx/arcane/mana-burst.js";
 import * as spawnPortal from "../../vendor/pixelfx/src/fx/spawn/spawn-portal.js";
 import * as icicleFall from "../../vendor/pixelfx/src/fx/ice/icicle-fall.js";
+import * as fireBreath from "../../vendor/pixelfx/src/fx/fire/fire-breath.js";
+import * as fireTornado from "../../vendor/pixelfx/src/fx/fire/fire-tornado.js";
+import * as flamePillar from "../../vendor/pixelfx/src/fx/fire/flame-pillar.js";
+import * as meteor from "../../vendor/pixelfx/src/fx/fire/meteor.js";
+import * as bird from "../../vendor/pixelfx/src/fx/critters/bird.js";
 import { rasterText, textWidth } from "../../vendor/pixelfx/src/core/font.js";
 
 const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, MAX_SEGS = 4;
@@ -114,7 +119,7 @@ const AREAS = [
 ];
 // ---------------- stages ----------------
 // A stage is a run of 64-tile segments. Each segment has an area theme (art, weather, enemy palettes) and a layout.
-// Stage 1 is all Dusk Meadow and Stage 2 all Frost Hollow; Stage 3 holds Ember Depths and Haunted Grove until they're split too.
+// Stages 1-3 are three segments of one area each (Dusk Meadow, Frost Hollow, Ember Depths); Stage 4 is Haunted Grove for now.
 const STAGES = [
   { title: "Dusk Meadow", segs: [
     { theme: 0, layout: "meadow1", name: "Dusk Meadow", tip: "Stomp what you can. X casts, Q switches spells." },
@@ -126,8 +131,13 @@ const STAGES = [
     { theme: 1, layout: "frost2", name: "Glacier Pass", tip: "King Gloop holds the far end of the pass." },
     { theme: 1, layout: "frost3", name: "Crystal Lake", tip: "Something cold is watching from over the lake." },
   ] },
-  { title: "Ember Depths to Haunted Grove", segs: [
-    { theme: 2, layout: "ember" }, { theme: 3, layout: "grove" },
+  { title: "Ember Depths", segs: [
+    { theme: 2, layout: "ember", name: "Ember Depths" },
+    { theme: 2, layout: "ember2", name: "Cinder Steps", tip: "The Cinder Wyrm coils at the top of the steps." },
+    { theme: 2, layout: "ember3", name: "Magma Halls", tip: "Wings of fire are circling overhead." },
+  ] },
+  { title: "Haunted Grove", segs: [
+    { theme: 3, layout: "grove" },
   ] },
 ];
 let stageI = 0, SEGS = STAGES[0].segs, NA = SEGS.length, COLS = AW * NA, stageScore0 = 0, stageCoins0 = 0;
@@ -232,6 +242,30 @@ function buildLevel() {
       en("slime", 6, { x0: 3, x1: 9 }); en("snake", 22, { x0: 16, x1: 24 }); en("skull", 17, { hy: 76 }); en("bat", 28, { by: 52, x0: 25, x1: 31 });
       en("frog", 42, { x0: 40, x1: 44 }); en("skull", 47, { hy: 64 }); en("slime", 57, { x0: 51, x1: 62 });
       SPEC.globes.push(X(35));
+    }
+    if (lay === "ember2") {
+      // Cinder Steps: lava pits with a plank to hop, ending in the Cinder Wyrm's arena with a checkpoint just before it
+      ground(0, 8); lava(9, 11); ground(12, 19); ground(15, 17, 7); lava(20, 23); plank(21, 22, 6); ground(24, 31); lava(32, 35); plank(33, 34, 6);
+      ground(36, 42); ground(38, 39, 7); lava(43, 45); ground(46, 63);
+      SPEC.torches.push(X(4), X(16), X(28), X(37), X(50), X(61));
+      coinsRow(9, 11, 96); coinsRow(15, 17, 96); coinsRow(21, 22, 80); coinsRow(33, 34, 80); coinsRow(43, 45, 96);
+      en("slime", 5, { x0: 2, x1: 8 }); en("skull", 13, { hy: 76 }); en("snake", 28, { x0: 24, x1: 31 }); en("bat", 34, { by: 52, x0: 32, x1: 36 }); en("frog", 41, { x0: 40, x1: 42 });
+      SPEC.potions.push([X(30), 128]); SPEC.hearts.push([X(38), 96]);
+      SPEC.flags.push(X(40));
+      SPEC.arenas.push({ kind: "wyrm", x0: (o + 46) * T, x1: (o + 64) * T, floor: 9 * T });
+    }
+    if (lay === "ember3") {
+      // Magma Halls: wider lava, then the Pyre Phoenix's arena with two ledges and the stage's chest
+      ground(0, 10); lava(11, 13); ground(14, 22); ground(17, 19, 7); lava(23, 27); plank(25, 26, 6); ground(28, 36); lava(37, 39); ground(40, 63);
+      plank(46, 48, 6); plank(55, 57, 6);
+      for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
+      SPEC.torches.push(X(4), X(15), X(30), X(41), X(60));
+      coinsRow(11, 13, 96); coinsRow(17, 19, 96); coinsRow(25, 26, 80); coinsRow(30, 34, 128); coinsRow(37, 39, 96);
+      en("slime", 7, { x0: 3, x1: 10 }); en("skull", 13, { hy: 70 }); en("snake", 21, { x0: 20, x1: 22 }); en("bat", 25, { by: 50, x0: 23, x1: 27 }); en("frog", 32, { x0: 29, x1: 36 }); en("skull", 38, { hy: 64 });
+      SPEC.potions.push([X(18), 96]); SPEC.hearts.push([X(35), 128]);
+      SPEC.flags.push(X(41));
+      SPEC.arenas.push({ kind: "phoenix", x0: (o + 42) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
+      SPEC.chest = X(52);
     }
     if (lay === "grove") {
       ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); plank(48, 50, 6); plank(56, 58, 6);
@@ -599,7 +633,7 @@ function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
     p.life -= dt; if (p.g) p.vy += p.g * dt; p.x += p.vx * dt; if (p.vy) p.y += p.vy * dt;
-    p.fx.update(dt); p.fx.options.x = p.x; p.fx.options.y = p.y;
+    p.fx.update(dt); p.fx.options.x = p.x; p.fx.options.y = p.y; if (p.g) p.fx.options.angle = Math.atan2(p.vy, p.vx);
     let gone = p.life <= 0;
     const tip = p.x + Math.sign(p.vx) * 4, tt = tileAt(Math.floor(tip / T), Math.floor(p.y / T));
     if (!gone && (p.kind === "shot" ? tt === GR || tt === IC : SOLID(tt))) {
@@ -772,7 +806,7 @@ function damageBoss(A, amount, how, px, py) {
   B.hp = Math.max(0, B.hp - dmg); B.flash = 0.12;
   spawn(damageNumber, { x: px, y: py - 10, text: "-" + dmg, ...(dmg > amount ? { palette: GOLD } : {}) });
   score += 10 * dmg; shake = Math.max(shake, 0.08);
-  if (B.hp <= 0) { setB(B, "dying"); B.deathT = 0; B.nextPop = 0; hazards = hazards.filter((h) => h.kind !== "strike"); shake = 0.4; }
+  if (B.hp <= 0) { setB(B, "dying"); B.deathT = 0; B.nextPop = 0; hazards = hazards.filter((h) => !["strike", "tornado", "breath"].includes(h.kind)); shake = 0.4; }
   return true;
 }
 
@@ -1426,6 +1460,235 @@ function drawRime(A) {
   }
 }
 
+// ---- Cinder Wyrm (Stage 3 mid boss): a giant fire snake that spits fireballs, breathes fire and raises flame pillars
+const WYRM_K = 1.8, WYRM_PAL = ["#2a0806", "#5a1208", "#8a2410", "#c0401a", "#f06a24", "#ffa040", "#ffe090"], WYRM_BELLY = ["#7a2a0a", "#ffb030", "#fff0a0"];
+const WYRM_HEAD = [37, 9], PHX_FACE = 1;
+const WYRM_BOX = (B) => [B.x + (B.dir > 0 ? -40 : -35) * WYRM_K, B.y - 15 * WYRM_K, 75 * WYRM_K, 15 * WYRM_K];
+const FIRE_SPARK = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#ffffff"];
+function makeWyrm(A) {
+  return { kind: "wyrm", name: "Cinder Wyrm", hp: 18, max: 18, x: A.x1 - 90, y: A.floor, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.6, seq: 0, queue: [], slowT: 0, deathT: 0, nextPop: 0 };
+}
+const wyrmMouth = (B) => [B.x + B.dir * WYRM_HEAD[0] * WYRM_K, B.y - WYRM_HEAD[1] * WYRM_K];
+function updateWyrm(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt); B.slowT = Math.max(0, B.slowT - dt);
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt;
+    if (B.deathT > B.nextPop) { B.nextPop += 0.2; spawn(poof, { x: B.x + (Math.random() - 0.5) * 90, y: A.floor - 6, palette: SMOKE }); }
+    if (B.deathT > 1.4) wyrmDefeated(A);
+    return;
+  }
+  const slow = B.slowT > 0 ? 0.5 : 1;
+  B.anim += dt * slow;
+  B.phase = B.hp > B.max / 2 ? 1 : 2;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    say("", "The Wyrm is burning hotter! Watch for cracks in the floor.", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  const lo = A.x0 + 70, hi = A.x1 - 70;
+  switch (B.state) {
+    case "intro":
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.4) setB(B, "crawl");
+      break;
+    case "crawl": {
+      // slither toward the hero, turning around only when it has passed them by a good way
+      if ((B.dir < 0 && hx > B.x + 60) || (B.dir > 0 && hx < B.x - 60)) B.dir = -B.dir;
+      B.x = clampN(B.x + B.dir * (B.phase > 1 ? 58 : 42) * slow * dt, lo, hi);
+      if ((B.x <= lo && B.dir < 0) || (B.x >= hi && B.dir > 0)) B.dir = -B.dir;
+      B.atk -= dt * slow;
+      if (B.atk <= 0) wyrmAttack(A);
+      break;
+    }
+    case "rear":
+      if (B.t > 0.5 / slow) {
+        const [mx, my] = wyrmMouth(B), n = B.phase > 1 ? 4 : 3;
+        for (let i = 0; i < n; i++) B.queue.push({ t: i * 0.18, f: () => {
+          const [sx, sy] = wyrmMouth(B), tx = clampN(hx + (i - (n - 1) / 2) * 34, A.x0 + 10, A.x1 - 10), tf = 0.85 + i * 0.08, g = 520;
+          const vx = (tx - sx) / tf, vy = (A.floor - 6 - sy - 0.5 * g * tf * tf) / tf;
+          projectiles.push({ kind: "shot", cause: "fire", spark: FIRE_SPARK, g, x: sx, y: sy, vx, vy, life: 3, fx: createFx(fireball, { x: sx, y: sy, angle: Math.atan2(vy, vx), radius: 4 }) });
+        } });
+        setB(B, "spitting");
+      }
+      break;
+    case "spitting":
+      if (B.t > 0.8) { setB(B, "crawl"); B.atk = B.phase > 1 ? 1.3 : 1.8; }
+      break;
+    case "inhale":
+      if (B.t > 0.75 / slow) {
+        const [mx, my] = wyrmMouth(B), fx = createFx(fireBreath, { x: mx, y: my, flip: B.dir < 0, spread: 0.2, seed: (Math.random() * 99) | 0 });
+        hazards.push({ kind: "breath", x: mx, y: my, dir: B.dir, reach: 108, floor: A.floor, t: 0, fx });
+        setB(B, "breathing");
+      }
+      break;
+    case "breathing":
+      if (B.t > 1.1) {
+        for (const h of hazards) if (h.kind === "breath") h.fx.stop();
+        setB(B, "crawl"); B.atk = B.phase > 1 ? 1.3 : 1.8;
+      }
+      break;
+  }
+}
+function wyrmAttack(A) {
+  const B = A.boss, hx = P.x + 6;
+  const list = B.phase === 1 ? ["spit", "breath"] : ["pillars", "breath", "spit", "pillars", "spit"];
+  const atk = list[B.seq++ % list.length];
+  if (atk === "spit") { B.dir = hx < B.x ? -1 : 1; setB(B, "rear"); }
+  else if (atk === "breath") { B.dir = hx < B.x ? -1 : 1; setB(B, "inhale"); }
+  else {
+    for (let i = 0; i < 3; i++) {
+      const x = clampN(hx + (i - 1) * 64, A.x0 + 14, A.x1 - 14);
+      B.queue.push({ t: i * 0.25, f: () => hazards.push({ kind: "pillar", x, floor: A.floor, t: 0, fx: createFx(flamePillar, { x, y: A.floor, height: 90, seed: (Math.random() * 99) | 0 }) }) });
+    }
+    B.atk = 2.2;
+  }
+}
+function wyrmDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  projectiles = projectiles.filter((p) => p.kind !== "shot");
+  for (const dx of [-40, -14, 14, 40]) spawn(poof, { x: B.x + dx, y: A.floor - 6, palette: SMOKE });
+  spawn(collectBurst, { x: B.x, y: A.floor - 10, palette: FIRE_SPARK });
+  spawn(damageNumber, { x: B.x, y: A.floor - 52, text: "+2000", palette: GOLD });
+  score += 2000; shake = 0.5;
+  hearts.push({ x: B.x, y: A.floor, b: bakeOf(heartPickup, {}, true) });
+  for (let i = 0; i < 6; i++) { const x = B.x - 50 + i * 20; coins.push({ x, y: A.floor - 30 - Math.round(Math.sin((i / 5) * Math.PI) * 18), ph: i * 0.3, b: bakeOf(coinSpin, { seed: 1 + (i % 3) }, true) }); }
+  say("The Cinder Wyrm cools!", "Onward to the Magma Halls.", 4000);
+}
+function drawWyrm(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const pal = B.flash > 0 ? { palette: WHITE7, belly: WHITE7 } : B.slowT > 0 ? { palette: ICE, belly: ICE.slice(3, 6) } : { palette: WYRM_PAL, belly: WYRM_BELLY };
+  const still = B.state === "rear" || B.state === "inhale" || B.state === "breathing" || B.state === "spitting" || B.state === "intro";
+  const b = bakeOf(snake, { seed: 3, flip: B.dir < 0, ...pal });
+  blitScaled(frame, b, still ? 0.3 + Math.sin(B.t * 6) * 0.05 : B.anim, B.x, B.y, WYRM_K, WYRM_K);
+  addGlow(B.x, B.y - 10, 40, [255, 110, 40], 0.22);
+  if (B.state === "inhale" || B.state === "rear") addGlow(...wyrmMouth(B), 16, [255, 80, 40], 0.4 + 0.3 * Math.sin(B.t * 30));
+}
+
+// ---- Pyre Phoenix (Stage 3 end boss): a firebird that calls down meteors, sheds burning feathers, dives and,
+// when hurt, sends fire tornadoes rolling across the floor
+const PHX_K = 2.0, PHX_PAL = ["#2a0606", "#6a1208", "#b02a0a", "#e85a14", "#ff9a2a", "#ffd060", "#fff6c0"], PHX_BREAST = ["#6a1208", "#ff6a1a", "#ffb040", "#fff0a0"];
+function makePhoenix(A) {
+  return { kind: "phoenix", name: "Pyre Phoenix", hp: 28, max: 28, x: A.x1 - 70, cy: A.floor - 230, homeY: A.floor - 96, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.4, seq: 0, queue: [], stunT: 0, dive: null, deathT: 0, nextPop: 0 };
+}
+function updatePhoenix(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.anim += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt; B.cy = Math.min(A.floor - 24, B.cy + dt * 80); shake = Math.max(shake, 0.1);
+    if (B.deathT > B.nextPop) { B.nextPop += 0.18; spawn(poof, { x: B.x + (Math.random() - 0.5) * 50, y: B.cy + 10, palette: FIRE_SPARK }); }
+    if (B.deathT > 1.6) phoenixDefeated(A);
+    return;
+  }
+  B.phase = B.hp > B.max / 2 ? 1 : 2;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    spawn(manaBurst, { x: B.x, y: B.cy + 20, palette: FIRE_SPARK });
+    say("", "The Phoenix blazes up! Jump the fire tornadoes.", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  if (B.stunT > 0) { B.stunT -= dt; return; }
+  switch (B.state) {
+    case "intro": {
+      const k = Math.min(1, B.t / 1.4);
+      B.cy = A.floor - 230 + (B.homeY - A.floor + 230) * (1 - (1 - k) ** 3);
+      B.x += ((A.x0 + A.x1) / 2 + 50 - B.x) * Math.min(1, dt * 2);
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.8) setB(B, "hover");
+      break;
+    }
+    case "hover":
+      B.dir = hx < B.x ? -1 : 1;
+      B.x += (clampN(hx + (B.x < hx ? -60 : 60), A.x0 + 40, A.x1 - 40) - B.x) * Math.min(1, dt * 0.9);
+      B.cy += (B.homeY + Math.sin(B.t * 2.4) * 9 - B.cy) * Math.min(1, dt * 3);
+      if (Math.random() < dt * 14) puff(B.x - B.dir * 22 + (Math.random() - 0.5) * 20, B.cy + 6, 1, 24, Math.random() < 0.5 ? "#ffb040" : "#ff6a1a");
+      B.atk -= dt;
+      if (B.atk <= 0) phoenixAttack(A);
+      break;
+    case "aim":
+      // rear back, glowing, over a red mark where it will hit
+      B.cy -= dt * 26;
+      if (B.t > (B.phase > 1 ? 0.5 : 0.65)) { B.dive = { sx: B.x, sy: B.cy, ex: B.dive.ex, ey: A.floor - 24, d: 0.42 }; setB(B, "dive"); }
+      break;
+    case "dive": {
+      const d = B.dive, u = Math.min(1, B.t / d.d), e = u * u;
+      B.x = d.sx + (d.ex - d.sx) * e; B.cy = d.sy + (d.ey - d.sy) * e;
+      B.dir = d.ex > d.sx ? 1 : -1;
+      if (u >= 1) {
+        setB(B, "grounded"); shake = 0.35; puff(B.x, A.floor, 16, 180, "#ffb070");
+      }
+      break;
+    }
+    case "grounded":
+      if (B.t > (B.phase > 1 ? 1.3 : 1.7)) setB(B, "rise");
+      break;
+    case "rise":
+      B.cy += (B.homeY - B.cy) * Math.min(1, dt * 2.5);
+      if (Math.abs(B.cy - B.homeY) < 3) { setB(B, "hover"); B.atk = 0.8; }
+      break;
+  }
+}
+function phoenixAttack(A) {
+  const B = A.boss, ph = B.phase, q = (t, f) => B.queue.push({ t, f }), hx = () => P.x + 6;
+  const list = ph === 1 ? ["meteors", "dive", "feathers", "dive"] : ["meteors", "tornado", "dive", "feathers", "tornado", "dive"];
+  const atk = list[B.seq++ % list.length];
+  B.atk = ph === 1 ? 1.7 : 1.3;
+  if (atk === "dive") { B.dive = { ex: clampN(hx(), A.x0 + 30, A.x1 - 30) }; setB(B, "aim"); }
+  else if (atk === "meteors") {
+    const n = ph === 1 ? 2 : 3;
+    for (let i = 0; i < n; i++) q(i * 0.45, () => {
+      const x = clampN(hx() + (Math.random() - 0.5) * 30, A.x0 + 20, A.x1 - 20);
+      hazards.push({ kind: "marker", x, floor: A.floor, t: 0, fx: markerFx(x, A.floor, 0.62) });
+      hazards.push({ kind: "meteor", x, floor: A.floor, t: 0, fx: createFx(meteor, { x, y: A.floor, seed: (Math.random() * 99) | 0 }) });
+    });
+    say("", "Meteors! Get off the red marks.", 1800);
+  } else if (atk === "feathers") {
+    const n = ph === 1 ? 4 : 6;
+    for (let i = 0; i < n; i++) q(0.2 + i * 0.16, () => {
+      const sx = B.x, sy = B.cy + 8, a0 = Math.atan2(P.y + P.h / 2 - sy, hx() - sx), a = a0 + (i - (n - 1) / 2) * 0.16, v = 140;
+      projectiles.push({ kind: "shot", cause: "fire", spark: FIRE_SPARK, x: sx, y: sy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 3, fx: createFx(fireball, { x: sx, y: sy, angle: a, radius: 3 }) });
+    });
+  } else if (atk === "tornado") {
+    const dir = hx() < B.x ? -1 : 1, x = clampN(B.x, A.x0 + 16, A.x1 - 16);
+    hazards.push({ kind: "tornado", x, dir, x0: A.x0, x1: A.x1, floor: A.floor, t: 0, fx: createFx(fireTornado, { x, y: A.floor, height: 34, seed: (Math.random() * 99) | 0 }) });
+    spawn(poof, { x, y: A.floor, palette: FIRE_SPARK });
+  }
+}
+function phoenixDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  projectiles = projectiles.filter((p) => p.kind !== "shot");
+  spawn(manaBurst, { x: B.x, y: A.floor - 10, palette: FIRE_SPARK });
+  revealChest(A, "+5000", 5000, "The Pyre Phoenix burns out!", `Open the chest to clear Stage ${stageI + 1}.`);
+}
+function drawPhoenix(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const pal = B.flash > 0 ? { palette: WHITE7, breast: WHITE7 } : B.stunT > 0 ? { palette: ICE, breast: ICE.slice(2, 6) } : { palette: PHX_PAL, breast: PHX_BREAST };
+  const b = bakeOf(bird, { seed: 2, flip: B.dir * PHX_FACE < 0, ...pal });
+  const t = B.state === "grounded" || B.state === "dive" ? 1.9 : B.anim * (B.state === "aim" ? 1.8 : 1);
+  const [cx, cy] = bakeCentroid(b, t);
+  blitScaled(frame, b, t, B.x - cx * PHX_K, B.cy - cy * PHX_K, PHX_K, PHX_K, A.floor + 2);
+  const warn = B.state === "aim";
+  addGlow(B.x, B.cy, 40, warn ? [255, 60, 60] : [255, 140, 50], warn ? 0.55 : 0.35);
+  if (warn) {
+    const k = Math.floor(time * 12) % 2 ? 0xff4a40ff : 0xff2a20b0, ex = B.dive.ex;
+    for (let dx = -14; dx <= 14; dx++) { plot(ex + dx, A.floor - 1, k); if (Math.abs(dx) < 9) plot(ex + dx, A.floor - 2, k); }
+  }
+  if (B.state === "grounded") for (let i = 0; i < 3; i++) {
+    const a = time * 5 + (i * Math.PI * 2) / 3, sx = B.x + Math.cos(a) * 20, sy = B.cy - 30 + Math.sin(a) * 4;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) plot(sx + dx, sy + dy, 0xff60e0ff);
+  }
+}
+
 // ---- the bosses, by kind
 const BOSSES = {
   gloop: { make: makeGloop, update: updateGloop, draw: drawGloop, cause: "ice", bar: ["#4fbcf5", "#c8f0ff"], wall: [90, 190, 255], mult: { fire: 2, ice: 0 },
@@ -1443,6 +1706,14 @@ const BOSSES = {
     box: (B) => [B.x - 28, B.cy - 20, 56, 36],
     onHit: (B, how) => { if (how === "ice") B.stunT = 1.0; },
     intro: () => { say("Duskwing", "Fire hurts it most. Stomp it from the ledges or when it lands to rest.", 5000); } },
+  wyrm: { make: makeWyrm, update: updateWyrm, draw: drawWyrm, cause: "fire", bar: ["#f07a2a", "#ffd090"], wall: [255, 120, 50], mult: { ice: 2, fire: 0 },
+    box: (B) => WYRM_BOX(B),
+    onHit: (B, how) => { if (how === "ice") B.slowT = 2.5; },
+    intro: (A) => { spawn(flamePillar, { x: A.boss.x, y: A.floor, height: 90 }); say("Cinder Wyrm", "Ice slows it and hurts it most. Jump on its back, and stay out of its breath.", 5000); shake = 0.3; } },
+  phoenix: { make: makePhoenix, update: updatePhoenix, draw: drawPhoenix, cause: "fire", bar: ["#ff8a2a", "#fff0a0"], wall: [255, 150, 60], mult: { ice: 2, fire: 0 },
+    box: (B) => [B.x - 26, B.cy - 22, 52, 40],
+    onHit: (B, how) => { if (how === "ice" && B.state === "hover") B.stunT = 0.9; },
+    intro: () => { say("Pyre Phoenix", "Ice hurts it most; fire does nothing. Stomp it when it crashes down.", 5000); } },
   rime: { make: makeRime, update: updateRime, draw: drawRime, cause: "ice", bar: ["#4fbcf5", "#e6fbff"], wall: [120, 210, 255], mult: { fire: 2, ice: 0 },
     box: (B) => [B.x - 24, B.cy - 26, 48, 52],
     onHit: (B, how) => { if (how === "zap" && B.state === "hover") B.stunT = 0.7; },
@@ -1507,6 +1778,17 @@ function updateBosses(dt) {
     if (h.kind === "ripple" && h.t < 0.5) {
       const front = h.ox + h.dir * h.reach * Math.min(1, h.t / 0.5);
       if (Math.abs(hcx - front) < 9 && feet > h.floor - 8) hurt("hit", front);
+    }
+    if (h.kind === "breath" && h.t < 1.15) {
+      const near = h.dir > 0 ? hcx - h.x : h.x - hcx, spread = 6 + near * 0.22;
+      if (near > -4 && near < h.reach * Math.min(1, h.t / 0.25) && P.y < h.y + spread && P.y + P.h > h.y - spread) hurt("fire", h.x);
+    }
+    if (h.kind === "pillar" && h.t > 0.6 && h.t < 1.9 && Math.abs(hcx - h.x) < 12) hurt("fire", h.x);
+    if (h.kind === "meteor" && h.t > 0.6 && h.t < 0.85 && Math.abs(hcx - h.x) < 22 && feet > h.floor - 34) hurt("fire", h.x);
+    if (h.kind === "tornado") {
+      h.x += h.dir * 78 * dt; h.fx.options.x = h.x;
+      if ((h.x < h.x0 + 8 || h.x > h.x1 - 8) && h.fx.done && h.t < 99) { h.fx.stop(); h.t = 99; }
+      if (h.t < 99 && Math.abs(hcx - h.x) < 12 && feet > h.floor - 28) hurt("fire", h.x);
     }
     if (h.kind === "icicle" && h.t > ICICLE_FREE && h.t < ICICLE_HIT + 0.06) {
       const tip = Math.min(h.floor, h.floor - 44 + 0.5 * 950 * (h.t - ICICLE_FREE) ** 2);

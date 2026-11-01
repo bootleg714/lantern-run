@@ -100,7 +100,7 @@ td.where { color: var(--muted); white-space: nowrap; }
     <div class="actions">
       <span class="pad" id="padStatus" hidden></span>
       <a href="?hero=wizard">Biscuit</a> <a href="?hero=knight">Knight</a> <a href="?hero=warrior">Warrior</a>
-      <span class="stage-pick">Stage <a data-stage="1" href="?stage=1">1</a> <a data-stage="2" href="?stage=2">2</a> <a data-stage="3" href="?stage=3">3</a></span>
+      <span class="stage-pick">Stage <a data-stage="1" href="?stage=1">1</a> <a data-stage="2" href="?stage=2">2</a> <a data-stage="3" href="?stage=3">3</a> <a data-stage="4" href="?stage=4">4</a></span>
       <button id="restartBtn">Restart</button>
     </div>
   </div>
@@ -131,7 +131,9 @@ td.where { color: var(--muted); white-space: nowrap; }
             <tr><td>Duskwing</td><td class="where">Stage 1 boss</td><td>Giant bat. Fire does double. Run from its swoops, stay off the red marks, stomp it from the ledges or when it lands.</td></tr>
             <tr><td>King Gloop</td><td class="where">Stage 2 mid boss</td><td>Fire does double, ice does nothing. Jump the frost lines when he lands; he splits at half health.</td></tr>
             <tr><td>Rimeskull</td><td class="where">Stage 2 boss</td><td>Giant frost skull. Fire does double, ice does nothing. Dodge its ice shards and falling icicles, run from the red mark before it slams, then stomp it while it's stuck. At half health it blows a blizzard.</td></tr>
-            <tr><td>The Hollow Eye</td><td class="where">Stage 3 boss</td><td>Zap does double, ice stuns it. Dodge the lightning marks and stomp it from the ledges.</td></tr>
+            <tr><td>Cinder Wyrm</td><td class="where">Stage 3 mid boss</td><td>Giant fire snake. Ice does double and slows it; fire does nothing. Jump its spit, get out of its breath, and stomp its back. At half health it raises flame pillars.</td></tr>
+            <tr><td>Pyre Phoenix</td><td class="where">Stage 3 boss</td><td>Firebird. Ice does double and stuns it; fire does nothing. Leave the red marks before meteors land, dodge the feathers, stomp it after it dives. At half health it sends fire tornadoes to jump.</td></tr>
+            <tr><td>The Hollow Eye</td><td class="where">Stage 4 boss</td><td>Zap does double, ice stuns it. Dodge the lightning marks and stomp it from the ledges.</td></tr>
           </tbody>
         </table>
       </div>
@@ -207,6 +209,11 @@ const plasmaExplosion = __r(70);
 const manaBurst = __r(72);
 const spawnPortal = __r(74);
 const icicleFall = __r(75);
+const fireBreath = __r(76);
+const fireTornado = __r(77);
+const flamePillar = __r(78);
+const meteor = __r(79);
+const bird = __r(80);
 const {rasterText, textWidth} = __r(8);
 
 const W = 320, H = 180, T = 16, OY = -4, ROWS = 11, AW = 64, MAX_SEGS = 4;
@@ -273,7 +280,7 @@ const AREAS = [
 ];
 // ---------------- stages ----------------
 // A stage is a run of 64-tile segments. Each segment has an area theme (art, weather, enemy palettes) and a layout.
-// Stage 1 is all Dusk Meadow and Stage 2 all Frost Hollow; Stage 3 holds Ember Depths and Haunted Grove until they're split too.
+// Stages 1-3 are three segments of one area each (Dusk Meadow, Frost Hollow, Ember Depths); Stage 4 is Haunted Grove for now.
 const STAGES = [
   { title: "Dusk Meadow", segs: [
     { theme: 0, layout: "meadow1", name: "Dusk Meadow", tip: "Stomp what you can. X casts, Q switches spells." },
@@ -285,8 +292,13 @@ const STAGES = [
     { theme: 1, layout: "frost2", name: "Glacier Pass", tip: "King Gloop holds the far end of the pass." },
     { theme: 1, layout: "frost3", name: "Crystal Lake", tip: "Something cold is watching from over the lake." },
   ] },
-  { title: "Ember Depths to Haunted Grove", segs: [
-    { theme: 2, layout: "ember" }, { theme: 3, layout: "grove" },
+  { title: "Ember Depths", segs: [
+    { theme: 2, layout: "ember", name: "Ember Depths" },
+    { theme: 2, layout: "ember2", name: "Cinder Steps", tip: "The Cinder Wyrm coils at the top of the steps." },
+    { theme: 2, layout: "ember3", name: "Magma Halls", tip: "Wings of fire are circling overhead." },
+  ] },
+  { title: "Haunted Grove", segs: [
+    { theme: 3, layout: "grove" },
   ] },
 ];
 let stageI = 0, SEGS = STAGES[0].segs, NA = SEGS.length, COLS = AW * NA, stageScore0 = 0, stageCoins0 = 0;
@@ -391,6 +403,30 @@ function buildLevel() {
       en("slime", 6, { x0: 3, x1: 9 }); en("snake", 22, { x0: 16, x1: 24 }); en("skull", 17, { hy: 76 }); en("bat", 28, { by: 52, x0: 25, x1: 31 });
       en("frog", 42, { x0: 40, x1: 44 }); en("skull", 47, { hy: 64 }); en("slime", 57, { x0: 51, x1: 62 });
       SPEC.globes.push(X(35));
+    }
+    if (lay === "ember2") {
+      // Cinder Steps: lava pits with a plank to hop, ending in the Cinder Wyrm's arena with a checkpoint just before it
+      ground(0, 8); lava(9, 11); ground(12, 19); ground(15, 17, 7); lava(20, 23); plank(21, 22, 6); ground(24, 31); lava(32, 35); plank(33, 34, 6);
+      ground(36, 42); ground(38, 39, 7); lava(43, 45); ground(46, 63);
+      SPEC.torches.push(X(4), X(16), X(28), X(37), X(50), X(61));
+      coinsRow(9, 11, 96); coinsRow(15, 17, 96); coinsRow(21, 22, 80); coinsRow(33, 34, 80); coinsRow(43, 45, 96);
+      en("slime", 5, { x0: 2, x1: 8 }); en("skull", 13, { hy: 76 }); en("snake", 28, { x0: 24, x1: 31 }); en("bat", 34, { by: 52, x0: 32, x1: 36 }); en("frog", 41, { x0: 40, x1: 42 });
+      SPEC.potions.push([X(30), 128]); SPEC.hearts.push([X(38), 96]);
+      SPEC.flags.push(X(40));
+      SPEC.arenas.push({ kind: "wyrm", x0: (o + 46) * T, x1: (o + 64) * T, floor: 9 * T });
+    }
+    if (lay === "ember3") {
+      // Magma Halls: wider lava, then the Pyre Phoenix's arena with two ledges and the stage's chest
+      ground(0, 10); lava(11, 13); ground(14, 22); ground(17, 19, 7); lava(23, 27); plank(25, 26, 6); ground(28, 36); lava(37, 39); ground(40, 63);
+      plank(46, 48, 6); plank(55, 57, 6);
+      for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
+      SPEC.torches.push(X(4), X(15), X(30), X(41), X(60));
+      coinsRow(11, 13, 96); coinsRow(17, 19, 96); coinsRow(25, 26, 80); coinsRow(30, 34, 128); coinsRow(37, 39, 96);
+      en("slime", 7, { x0: 3, x1: 10 }); en("skull", 13, { hy: 70 }); en("snake", 21, { x0: 20, x1: 22 }); en("bat", 25, { by: 50, x0: 23, x1: 27 }); en("frog", 32, { x0: 29, x1: 36 }); en("skull", 38, { hy: 64 });
+      SPEC.potions.push([X(18), 96]); SPEC.hearts.push([X(35), 128]);
+      SPEC.flags.push(X(41));
+      SPEC.arenas.push({ kind: "phoenix", x0: (o + 42) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
+      SPEC.chest = X(52);
     }
     if (lay === "grove") {
       ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); plank(48, 50, 6); plank(56, 58, 6);
@@ -758,7 +794,7 @@ function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
     p.life -= dt; if (p.g) p.vy += p.g * dt; p.x += p.vx * dt; if (p.vy) p.y += p.vy * dt;
-    p.fx.update(dt); p.fx.options.x = p.x; p.fx.options.y = p.y;
+    p.fx.update(dt); p.fx.options.x = p.x; p.fx.options.y = p.y; if (p.g) p.fx.options.angle = Math.atan2(p.vy, p.vx);
     let gone = p.life <= 0;
     const tip = p.x + Math.sign(p.vx) * 4, tt = tileAt(Math.floor(tip / T), Math.floor(p.y / T));
     if (!gone && (p.kind === "shot" ? tt === GR || tt === IC : SOLID(tt))) {
@@ -931,7 +967,7 @@ function damageBoss(A, amount, how, px, py) {
   B.hp = Math.max(0, B.hp - dmg); B.flash = 0.12;
   spawn(damageNumber, { x: px, y: py - 10, text: "-" + dmg, ...(dmg > amount ? { palette: GOLD } : {}) });
   score += 10 * dmg; shake = Math.max(shake, 0.08);
-  if (B.hp <= 0) { setB(B, "dying"); B.deathT = 0; B.nextPop = 0; hazards = hazards.filter((h) => h.kind !== "strike"); shake = 0.4; }
+  if (B.hp <= 0) { setB(B, "dying"); B.deathT = 0; B.nextPop = 0; hazards = hazards.filter((h) => !["strike", "tornado", "breath"].includes(h.kind)); shake = 0.4; }
   return true;
 }
 
@@ -1585,6 +1621,235 @@ function drawRime(A) {
   }
 }
 
+// ---- Cinder Wyrm (Stage 3 mid boss): a giant fire snake that spits fireballs, breathes fire and raises flame pillars
+const WYRM_K = 1.8, WYRM_PAL = ["#2a0806", "#5a1208", "#8a2410", "#c0401a", "#f06a24", "#ffa040", "#ffe090"], WYRM_BELLY = ["#7a2a0a", "#ffb030", "#fff0a0"];
+const WYRM_HEAD = [37, 9], PHX_FACE = 1;
+const WYRM_BOX = (B) => [B.x + (B.dir > 0 ? -40 : -35) * WYRM_K, B.y - 15 * WYRM_K, 75 * WYRM_K, 15 * WYRM_K];
+const FIRE_SPARK = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#ffffff"];
+function makeWyrm(A) {
+  return { kind: "wyrm", name: "Cinder Wyrm", hp: 18, max: 18, x: A.x1 - 90, y: A.floor, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.6, seq: 0, queue: [], slowT: 0, deathT: 0, nextPop: 0 };
+}
+const wyrmMouth = (B) => [B.x + B.dir * WYRM_HEAD[0] * WYRM_K, B.y - WYRM_HEAD[1] * WYRM_K];
+function updateWyrm(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt); B.slowT = Math.max(0, B.slowT - dt);
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt;
+    if (B.deathT > B.nextPop) { B.nextPop += 0.2; spawn(poof, { x: B.x + (Math.random() - 0.5) * 90, y: A.floor - 6, palette: SMOKE }); }
+    if (B.deathT > 1.4) wyrmDefeated(A);
+    return;
+  }
+  const slow = B.slowT > 0 ? 0.5 : 1;
+  B.anim += dt * slow;
+  B.phase = B.hp > B.max / 2 ? 1 : 2;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    say("", "The Wyrm is burning hotter! Watch for cracks in the floor.", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  const lo = A.x0 + 70, hi = A.x1 - 70;
+  switch (B.state) {
+    case "intro":
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.4) setB(B, "crawl");
+      break;
+    case "crawl": {
+      // slither toward the hero, turning around only when it has passed them by a good way
+      if ((B.dir < 0 && hx > B.x + 60) || (B.dir > 0 && hx < B.x - 60)) B.dir = -B.dir;
+      B.x = clampN(B.x + B.dir * (B.phase > 1 ? 58 : 42) * slow * dt, lo, hi);
+      if ((B.x <= lo && B.dir < 0) || (B.x >= hi && B.dir > 0)) B.dir = -B.dir;
+      B.atk -= dt * slow;
+      if (B.atk <= 0) wyrmAttack(A);
+      break;
+    }
+    case "rear":
+      if (B.t > 0.5 / slow) {
+        const [mx, my] = wyrmMouth(B), n = B.phase > 1 ? 4 : 3;
+        for (let i = 0; i < n; i++) B.queue.push({ t: i * 0.18, f: () => {
+          const [sx, sy] = wyrmMouth(B), tx = clampN(hx + (i - (n - 1) / 2) * 34, A.x0 + 10, A.x1 - 10), tf = 0.85 + i * 0.08, g = 520;
+          const vx = (tx - sx) / tf, vy = (A.floor - 6 - sy - 0.5 * g * tf * tf) / tf;
+          projectiles.push({ kind: "shot", cause: "fire", spark: FIRE_SPARK, g, x: sx, y: sy, vx, vy, life: 3, fx: createFx(fireball, { x: sx, y: sy, angle: Math.atan2(vy, vx), radius: 4 }) });
+        } });
+        setB(B, "spitting");
+      }
+      break;
+    case "spitting":
+      if (B.t > 0.8) { setB(B, "crawl"); B.atk = B.phase > 1 ? 1.3 : 1.8; }
+      break;
+    case "inhale":
+      if (B.t > 0.75 / slow) {
+        const [mx, my] = wyrmMouth(B), fx = createFx(fireBreath, { x: mx, y: my, flip: B.dir < 0, spread: 0.2, seed: (Math.random() * 99) | 0 });
+        hazards.push({ kind: "breath", x: mx, y: my, dir: B.dir, reach: 108, floor: A.floor, t: 0, fx });
+        setB(B, "breathing");
+      }
+      break;
+    case "breathing":
+      if (B.t > 1.1) {
+        for (const h of hazards) if (h.kind === "breath") h.fx.stop();
+        setB(B, "crawl"); B.atk = B.phase > 1 ? 1.3 : 1.8;
+      }
+      break;
+  }
+}
+function wyrmAttack(A) {
+  const B = A.boss, hx = P.x + 6;
+  const list = B.phase === 1 ? ["spit", "breath"] : ["pillars", "breath", "spit", "pillars", "spit"];
+  const atk = list[B.seq++ % list.length];
+  if (atk === "spit") { B.dir = hx < B.x ? -1 : 1; setB(B, "rear"); }
+  else if (atk === "breath") { B.dir = hx < B.x ? -1 : 1; setB(B, "inhale"); }
+  else {
+    for (let i = 0; i < 3; i++) {
+      const x = clampN(hx + (i - 1) * 64, A.x0 + 14, A.x1 - 14);
+      B.queue.push({ t: i * 0.25, f: () => hazards.push({ kind: "pillar", x, floor: A.floor, t: 0, fx: createFx(flamePillar, { x, y: A.floor, height: 90, seed: (Math.random() * 99) | 0 }) }) });
+    }
+    B.atk = 2.2;
+  }
+}
+function wyrmDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  projectiles = projectiles.filter((p) => p.kind !== "shot");
+  for (const dx of [-40, -14, 14, 40]) spawn(poof, { x: B.x + dx, y: A.floor - 6, palette: SMOKE });
+  spawn(collectBurst, { x: B.x, y: A.floor - 10, palette: FIRE_SPARK });
+  spawn(damageNumber, { x: B.x, y: A.floor - 52, text: "+2000", palette: GOLD });
+  score += 2000; shake = 0.5;
+  hearts.push({ x: B.x, y: A.floor, b: bakeOf(heartPickup, {}, true) });
+  for (let i = 0; i < 6; i++) { const x = B.x - 50 + i * 20; coins.push({ x, y: A.floor - 30 - Math.round(Math.sin((i / 5) * Math.PI) * 18), ph: i * 0.3, b: bakeOf(coinSpin, { seed: 1 + (i % 3) }, true) }); }
+  say("The Cinder Wyrm cools!", "Onward to the Magma Halls.", 4000);
+}
+function drawWyrm(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const pal = B.flash > 0 ? { palette: WHITE7, belly: WHITE7 } : B.slowT > 0 ? { palette: ICE, belly: ICE.slice(3, 6) } : { palette: WYRM_PAL, belly: WYRM_BELLY };
+  const still = B.state === "rear" || B.state === "inhale" || B.state === "breathing" || B.state === "spitting" || B.state === "intro";
+  const b = bakeOf(snake, { seed: 3, flip: B.dir < 0, ...pal });
+  blitScaled(frame, b, still ? 0.3 + Math.sin(B.t * 6) * 0.05 : B.anim, B.x, B.y, WYRM_K, WYRM_K);
+  addGlow(B.x, B.y - 10, 40, [255, 110, 40], 0.22);
+  if (B.state === "inhale" || B.state === "rear") addGlow(...wyrmMouth(B), 16, [255, 80, 40], 0.4 + 0.3 * Math.sin(B.t * 30));
+}
+
+// ---- Pyre Phoenix (Stage 3 end boss): a firebird that calls down meteors, sheds burning feathers, dives and,
+// when hurt, sends fire tornadoes rolling across the floor
+const PHX_K = 2.0, PHX_PAL = ["#2a0606", "#6a1208", "#b02a0a", "#e85a14", "#ff9a2a", "#ffd060", "#fff6c0"], PHX_BREAST = ["#6a1208", "#ff6a1a", "#ffb040", "#fff0a0"];
+function makePhoenix(A) {
+  return { kind: "phoenix", name: "Pyre Phoenix", hp: 28, max: 28, x: A.x1 - 70, cy: A.floor - 230, homeY: A.floor - 96, dir: -1,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, atk: 1.4, seq: 0, queue: [], stunT: 0, dive: null, deathT: 0, nextPop: 0 };
+}
+function updatePhoenix(A, dt) {
+  const B = A.boss, hx = P.x + 6;
+  B.t += dt; B.anim += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt; B.cy = Math.min(A.floor - 24, B.cy + dt * 80); shake = Math.max(shake, 0.1);
+    if (B.deathT > B.nextPop) { B.nextPop += 0.18; spawn(poof, { x: B.x + (Math.random() - 0.5) * 50, y: B.cy + 10, palette: FIRE_SPARK }); }
+    if (B.deathT > 1.6) phoenixDefeated(A);
+    return;
+  }
+  B.phase = B.hp > B.max / 2 ? 1 : 2;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; B.flash = 0.3; shake = 0.3;
+    spawn(manaBurst, { x: B.x, y: B.cy + 20, palette: FIRE_SPARK });
+    say("", "The Phoenix blazes up! Jump the fire tornadoes.", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  if (B.stunT > 0) { B.stunT -= dt; return; }
+  switch (B.state) {
+    case "intro": {
+      const k = Math.min(1, B.t / 1.4);
+      B.cy = A.floor - 230 + (B.homeY - A.floor + 230) * (1 - (1 - k) ** 3);
+      B.x += ((A.x0 + A.x1) / 2 + 50 - B.x) * Math.min(1, dt * 2);
+      B.dir = hx < B.x ? -1 : 1;
+      if (B.t > 1.8) setB(B, "hover");
+      break;
+    }
+    case "hover":
+      B.dir = hx < B.x ? -1 : 1;
+      B.x += (clampN(hx + (B.x < hx ? -60 : 60), A.x0 + 40, A.x1 - 40) - B.x) * Math.min(1, dt * 0.9);
+      B.cy += (B.homeY + Math.sin(B.t * 2.4) * 9 - B.cy) * Math.min(1, dt * 3);
+      if (Math.random() < dt * 14) puff(B.x - B.dir * 22 + (Math.random() - 0.5) * 20, B.cy + 6, 1, 24, Math.random() < 0.5 ? "#ffb040" : "#ff6a1a");
+      B.atk -= dt;
+      if (B.atk <= 0) phoenixAttack(A);
+      break;
+    case "aim":
+      // rear back, glowing, over a red mark where it will hit
+      B.cy -= dt * 26;
+      if (B.t > (B.phase > 1 ? 0.5 : 0.65)) { B.dive = { sx: B.x, sy: B.cy, ex: B.dive.ex, ey: A.floor - 24, d: 0.42 }; setB(B, "dive"); }
+      break;
+    case "dive": {
+      const d = B.dive, u = Math.min(1, B.t / d.d), e = u * u;
+      B.x = d.sx + (d.ex - d.sx) * e; B.cy = d.sy + (d.ey - d.sy) * e;
+      B.dir = d.ex > d.sx ? 1 : -1;
+      if (u >= 1) {
+        setB(B, "grounded"); shake = 0.35; puff(B.x, A.floor, 16, 180, "#ffb070");
+      }
+      break;
+    }
+    case "grounded":
+      if (B.t > (B.phase > 1 ? 1.3 : 1.7)) setB(B, "rise");
+      break;
+    case "rise":
+      B.cy += (B.homeY - B.cy) * Math.min(1, dt * 2.5);
+      if (Math.abs(B.cy - B.homeY) < 3) { setB(B, "hover"); B.atk = 0.8; }
+      break;
+  }
+}
+function phoenixAttack(A) {
+  const B = A.boss, ph = B.phase, q = (t, f) => B.queue.push({ t, f }), hx = () => P.x + 6;
+  const list = ph === 1 ? ["meteors", "dive", "feathers", "dive"] : ["meteors", "tornado", "dive", "feathers", "tornado", "dive"];
+  const atk = list[B.seq++ % list.length];
+  B.atk = ph === 1 ? 1.7 : 1.3;
+  if (atk === "dive") { B.dive = { ex: clampN(hx(), A.x0 + 30, A.x1 - 30) }; setB(B, "aim"); }
+  else if (atk === "meteors") {
+    const n = ph === 1 ? 2 : 3;
+    for (let i = 0; i < n; i++) q(i * 0.45, () => {
+      const x = clampN(hx() + (Math.random() - 0.5) * 30, A.x0 + 20, A.x1 - 20);
+      hazards.push({ kind: "marker", x, floor: A.floor, t: 0, fx: markerFx(x, A.floor, 0.62) });
+      hazards.push({ kind: "meteor", x, floor: A.floor, t: 0, fx: createFx(meteor, { x, y: A.floor, seed: (Math.random() * 99) | 0 }) });
+    });
+    say("", "Meteors! Get off the red marks.", 1800);
+  } else if (atk === "feathers") {
+    const n = ph === 1 ? 4 : 6;
+    for (let i = 0; i < n; i++) q(0.2 + i * 0.16, () => {
+      const sx = B.x, sy = B.cy + 8, a0 = Math.atan2(P.y + P.h / 2 - sy, hx() - sx), a = a0 + (i - (n - 1) / 2) * 0.16, v = 140;
+      projectiles.push({ kind: "shot", cause: "fire", spark: FIRE_SPARK, x: sx, y: sy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 3, fx: createFx(fireball, { x: sx, y: sy, angle: a, radius: 3 }) });
+    });
+  } else if (atk === "tornado") {
+    const dir = hx() < B.x ? -1 : 1, x = clampN(B.x, A.x0 + 16, A.x1 - 16);
+    hazards.push({ kind: "tornado", x, dir, x0: A.x0, x1: A.x1, floor: A.floor, t: 0, fx: createFx(fireTornado, { x, y: A.floor, height: 34, seed: (Math.random() * 99) | 0 }) });
+    spawn(poof, { x, y: A.floor, palette: FIRE_SPARK });
+  }
+}
+function phoenixDefeated(A) {
+  const B = A.boss;
+  setB(B, "dead"); A.locked = false; A.cleared = true; hazards = [];
+  projectiles = projectiles.filter((p) => p.kind !== "shot");
+  spawn(manaBurst, { x: B.x, y: A.floor - 10, palette: FIRE_SPARK });
+  revealChest(A, "+5000", 5000, "The Pyre Phoenix burns out!", `Open the chest to clear Stage ${stageI + 1}.`);
+}
+function drawPhoenix(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 20) % 3 === 0) return;
+  const pal = B.flash > 0 ? { palette: WHITE7, breast: WHITE7 } : B.stunT > 0 ? { palette: ICE, breast: ICE.slice(2, 6) } : { palette: PHX_PAL, breast: PHX_BREAST };
+  const b = bakeOf(bird, { seed: 2, flip: B.dir * PHX_FACE < 0, ...pal });
+  const t = B.state === "grounded" || B.state === "dive" ? 1.9 : B.anim * (B.state === "aim" ? 1.8 : 1);
+  const [cx, cy] = bakeCentroid(b, t);
+  blitScaled(frame, b, t, B.x - cx * PHX_K, B.cy - cy * PHX_K, PHX_K, PHX_K, A.floor + 2);
+  const warn = B.state === "aim";
+  addGlow(B.x, B.cy, 40, warn ? [255, 60, 60] : [255, 140, 50], warn ? 0.55 : 0.35);
+  if (warn) {
+    const k = Math.floor(time * 12) % 2 ? 0xff4a40ff : 0xff2a20b0, ex = B.dive.ex;
+    for (let dx = -14; dx <= 14; dx++) { plot(ex + dx, A.floor - 1, k); if (Math.abs(dx) < 9) plot(ex + dx, A.floor - 2, k); }
+  }
+  if (B.state === "grounded") for (let i = 0; i < 3; i++) {
+    const a = time * 5 + (i * Math.PI * 2) / 3, sx = B.x + Math.cos(a) * 20, sy = B.cy - 30 + Math.sin(a) * 4;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) plot(sx + dx, sy + dy, 0xff60e0ff);
+  }
+}
+
 // ---- the bosses, by kind
 const BOSSES = {
   gloop: { make: makeGloop, update: updateGloop, draw: drawGloop, cause: "ice", bar: ["#4fbcf5", "#c8f0ff"], wall: [90, 190, 255], mult: { fire: 2, ice: 0 },
@@ -1602,6 +1867,14 @@ const BOSSES = {
     box: (B) => [B.x - 28, B.cy - 20, 56, 36],
     onHit: (B, how) => { if (how === "ice") B.stunT = 1.0; },
     intro: () => { say("Duskwing", "Fire hurts it most. Stomp it from the ledges or when it lands to rest.", 5000); } },
+  wyrm: { make: makeWyrm, update: updateWyrm, draw: drawWyrm, cause: "fire", bar: ["#f07a2a", "#ffd090"], wall: [255, 120, 50], mult: { ice: 2, fire: 0 },
+    box: (B) => WYRM_BOX(B),
+    onHit: (B, how) => { if (how === "ice") B.slowT = 2.5; },
+    intro: (A) => { spawn(flamePillar, { x: A.boss.x, y: A.floor, height: 90 }); say("Cinder Wyrm", "Ice slows it and hurts it most. Jump on its back, and stay out of its breath.", 5000); shake = 0.3; } },
+  phoenix: { make: makePhoenix, update: updatePhoenix, draw: drawPhoenix, cause: "fire", bar: ["#ff8a2a", "#fff0a0"], wall: [255, 150, 60], mult: { ice: 2, fire: 0 },
+    box: (B) => [B.x - 26, B.cy - 22, 52, 40],
+    onHit: (B, how) => { if (how === "ice" && B.state === "hover") B.stunT = 0.9; },
+    intro: () => { say("Pyre Phoenix", "Ice hurts it most; fire does nothing. Stomp it when it crashes down.", 5000); } },
   rime: { make: makeRime, update: updateRime, draw: drawRime, cause: "ice", bar: ["#4fbcf5", "#e6fbff"], wall: [120, 210, 255], mult: { fire: 2, ice: 0 },
     box: (B) => [B.x - 24, B.cy - 26, 48, 52],
     onHit: (B, how) => { if (how === "zap" && B.state === "hover") B.stunT = 0.7; },
@@ -1666,6 +1939,17 @@ function updateBosses(dt) {
     if (h.kind === "ripple" && h.t < 0.5) {
       const front = h.ox + h.dir * h.reach * Math.min(1, h.t / 0.5);
       if (Math.abs(hcx - front) < 9 && feet > h.floor - 8) hurt("hit", front);
+    }
+    if (h.kind === "breath" && h.t < 1.15) {
+      const near = h.dir > 0 ? hcx - h.x : h.x - hcx, spread = 6 + near * 0.22;
+      if (near > -4 && near < h.reach * Math.min(1, h.t / 0.25) && P.y < h.y + spread && P.y + P.h > h.y - spread) hurt("fire", h.x);
+    }
+    if (h.kind === "pillar" && h.t > 0.6 && h.t < 1.9 && Math.abs(hcx - h.x) < 12) hurt("fire", h.x);
+    if (h.kind === "meteor" && h.t > 0.6 && h.t < 0.85 && Math.abs(hcx - h.x) < 22 && feet > h.floor - 34) hurt("fire", h.x);
+    if (h.kind === "tornado") {
+      h.x += h.dir * 78 * dt; h.fx.options.x = h.x;
+      if ((h.x < h.x0 + 8 || h.x > h.x1 - 8) && h.fx.done && h.t < 99) { h.fx.stop(); h.t = 99; }
+      if (h.t < 99 && Math.abs(hcx - h.x) < 12 && feet > h.floor - 28) hurt("fire", h.x);
     }
     if (h.kind === "icicle" && h.t > ICICLE_FREE && h.t < ICICLE_HIT + 0.06) {
       const tip = Math.min(h.floor, h.floor - 44 + 0.5 * 950 * (h.t - ICICLE_FREE) ** 2);
@@ -16270,6 +16554,764 @@ function create(o) {
 
 __def(__e, "meta", () => meta);
 __def(__e, "create", () => create);
+
+
+},
+function(__e){
+// The flame-puff, smoke and spark recipe is adapted from Sprite Fusion's open-source explosion
+// (https://www.spritefusion.com/pixel-art-vfx/explosion), MIT License, Copyright (c) 2026 Hugo Duprez.
+const {fit, mix, hex, clamp, WHITE} = __r(1);
+const {noiseFor, hotFirst, flameBlade, flameTongue, firePuff, smokePuff, spark, ember, drift, looped, LAYERS, BACK_LAYERS} = __r(34);
+
+const meta = {
+  name: "Fire breath",
+  desc: "A roaring cone of fire streaming right from the mouth: white-hot at the lips, billowing out and cooling to red and smoke at its edges, sparks thrown out ahead.",
+  tags: ["fire", "breath", "dragon", "stream", "cone", "directional", "loop"],
+  size: [160, 116],
+  origin: [12, 72],
+  duration: 1.5,
+  loop: true,
+  fps: 30,
+  bg: "dark",
+  options: {
+    palette: ["#4a1712", "#8a1f17", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"],
+    spread: 0.24,
+    speed: 320,
+    seed: 6,
+  },
+};
+
+const D = meta.duration, NL = noiseFor(D), SMOKE1 = hex("#5b5566");
+// the dying licks: red and deep orange, no white heart
+const COOL_LAYERS = [[1, 1, 7], [0.72, 0.82, 6], [0.44, 0.58, 5]];
+// the jet at the lips: [length, half-width, angle]
+const JET = [[42, 4.2, 0], [32, 3.8, -0.08], [30, 3.8, 0.08], [20, 4.6, 0]];
+
+function draw(p, t, o) {
+  const F = fit(o.palette, 9), H = hotFirst(F), S = o.seed, A = o.spread, V = o.speed;
+  const N = (rate, seed = 0, off = 0) => NL(t, rate, seed, off);
+  const GLOW = mix(mix(H[3], H[4], 0.5), WHITE, 0.25), SMOKE = mix(SMOKE1, H[6], 0.3), SPARKS = [H[1], H[2], H[4], H[5]], EMB = [H[1], H[2], H[4], H[6]];
+  // the roar: the stream surges and the cone sways a little
+  const roar = (tt) => 0.85 + 0.15 * NL(tt, 3, S + 1), sway = (tt) => NL(tt, 1.3, S + 2) * 0.05;
+
+  // the cone: puffs of flame blown out of the mouth that slow, swell, rise and cool; those near the edges
+  // cool first, and many burn out into rolling smoke
+  const fire = [], smoke = [];
+  looped(t, D, 260, S + 100, (r) => {
+    const e = r.range(-1, 1), fl = r.range(0.42, 0.8) * (1 - 0.3 * Math.abs(e)), sm = r.chance(0.2 + 0.4 * Math.abs(e));
+    return { e, sp: r.range(0.75, 1.1), fl, sm, sl: r.range(0.5, 0.85), s: r.range(3, 5.2), f: r.next(), ox: r.range(4, 10), life: fl + (sm ? 0.85 : 0) };
+  }, (q, age) => {
+    const tb = t - age, a = q.e * A + sway(tb) - 0.04, v = V * q.sp * roar(tb);
+    const ta = Math.min(age, q.fl), [x, y, vx, vy] = drift(q.ox, q.e * 1.5, Math.cos(a) * v, Math.sin(a) * v, ta, 0, -100, 2, 2.4);
+    if (age < q.fl) return fire.push([age, x, y, q]);
+    if (!q.sm || age - q.fl > q.sl) return;
+    const sa = age - q.fl, [sx, sy] = drift(x, y, vx * 0.5, vy * 0.6 - 8, sa, 0, -26, 1.8, 1.2);
+    smoke.push([sa, sx, sy, q]);
+  });
+  for (const [sa, x, y, q] of smoke) smokePuff(p, x, y, 1 - sa / q.sl, q.s * 1.1, SMOKE, true, 0.7);
+  fire.sort((a, b) => b[0] - a[0]);
+  for (const [age, x, y, q] of fire) {
+    const u = age / q.fl, edge = Math.abs(q.e), size = q.s * (0.75 + 1.6 * u);
+    // the heart of the stream stays hot longer than its edges
+    const heat = Math.min(0.999, Math.pow(u, 1.5) * (0.85 + 0.2 * edge) + 0.3 * edge * edge);
+    // near the mouth the fire rolls in round billows; further out each billow tears into a tongue licking up
+    // and back, thinning to a lick as it cools, before the smoke takes it
+    const tear = clamp((u - 0.32) / 0.2);
+    firePuff(p, x, y, 1 - heat, size * (1 - 0.55 * tear), q.f, H, 0.1, -0.5, -0.86);
+    if (tear > 0) {
+      const n = Math.floor(q.f * 1e5), h = size * (1.5 + 0.5 * N(4, n)) * (1.2 - heat * 0.6) * tear;
+      flameTongue(p, x, y + size * 0.3, h, size * 0.5 * (1.1 - heat * 0.5), -h * 0.4 + N(2.5, n + 1) * 2, N, n, H, heat < 0.45 ? LAYERS : heat < 0.72 ? BACK_LAYERS : COOL_LAYERS);
+    }
+  }
+  // licks curling off the edges of the cone
+  for (let i = 0; i < 6; i++) {
+    const n = (S * 3 + i) * 19, side = i % 2 ? 1 : -1, d = 18 + (i >> 1) * 16 + N(2, n) * 4, L = (9 + 5 * (0.5 + 0.5 * N(5, n + 1))) * (1 - d / 120);
+    const ex = d, ey = side * d * A * 0.85 - d * 0.06;
+    flameBlade(p, ex, ey, 0.75, side * 0.45 - 0.48, L, 1.6 + L * 0.08, -side * 3, N, n, H, LAYERS);
+  }
+  // the roar: bright streaks racing out through the heart of the cone
+  looped(t, D, 70, S + 250, (r) => ({ e: r.range(-0.6, 0.6), v: r.range(330, 470), life: r.range(0.12, 0.26), l: r.range(4, 9) }), (q, age) => {
+    const a = q.e * A - 0.03, [x, y, vx, vy] = drift(6, q.e * 2, Math.cos(a) * q.v, Math.sin(a) * q.v, age, 0, -60, 2, 2);
+    const sp = Math.hypot(vx, vy), k = 1 - age / q.life, L = q.l * (sp / 400);
+    p.line(x - (vx / sp) * L, y - (vy / sp) * L, x, y, (u) => (u > 0.6 ? (k > 0.5 ? H[0] : H[1]) : k > 0.5 ? H[2] : H[3]));
+  });
+  // the jet at the lips: white-hot, overlapping tongues that flutter as the breath roars
+  JET.forEach(([len, w, a], i) => {
+    const n = (S * 5 + i) * 17, L = len * roar(t) * (0.85 + 0.2 * N(5, n)), aa = a + sway(t);
+    flameBlade(p, 0, 0, Math.cos(aa), Math.sin(aa), L, w, N(3, n + 3) * 3, N, n, H, LAYERS, 0.5, 1.5);
+  });
+
+  // sparks flung out ahead and falling; embers lifting off the far end
+  looped(t, D, 40, S + 300, (r) => ({ d: r.range(4, 60), e: r.range(-1, 1), v: r.range(140, 280), life: r.range(0.25, 0.55) }), (q, age) => {
+    const a = q.e * A * 1.8 - 0.12, [x, y, vx, vy] = drift(q.d, q.e * q.d * A, Math.cos(a) * q.v, Math.sin(a) * q.v - 30, age, 0, 190, 2, 2);
+    spark(p, x, y, vx, vy, 1 - age / q.life, SPARKS);
+  });
+  looped(t, D, 18, S + 400, (r) => ({ x: r.range(50, 100), y: r.range(-14, 6), vx: r.range(10, 40), vy: -r.range(20, 50), life: r.range(0.8, 1.4), s: r.chance(0.2) ? 2 : 1, ph: r.range(0, 6.3) }), (q, age) => {
+    const [x, y] = drift(q.x, q.y, q.vx, q.vy, age, 0, -30, 1.6, 1.6);
+    ember(p, x + 5 * (Math.sin(age * 2.3 + q.ph) - Math.sin(q.ph)), y, 1 - age / q.life, q.s, EMB, age * 40 + q.ph);
+  });
+
+  // light: a flare at the lips, light all along the cone widening with it, a broad halo
+  const k = roar(t);
+  p.glow(3, 0, 34 * k, GLOW, 0.75 * k);
+  p.glow(3, 0, 10, H[0], 0.55);
+  for (let d = 10; d < 126; d += 8) p.glow(d, -d * 0.1, 10 + d * 0.2, GLOW, 0.32 * k * (1 - d / 150));
+  p.glow(64, -12, 96, GLOW, 0.16 * k);
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "draw", () => draw);
+
+
+},
+function(__e){
+// The flame-puff, smoke and ember recipe is adapted from Sprite Fusion's open-source fire
+// (https://www.spritefusion.com/pixel-art-vfx/fire), MIT License, Copyright (c) 2026 Hugo Duprez.
+const {fit, mix, hex, clamp, WHITE, TAU} = __r(1);
+const {noiseFor, pnoise, hotFirst, flameTongue, firePuff, smokePuff, looped, drift, floorLight, LAYERS, BACK_LAYERS} = __r(34);
+
+const meta = {
+  name: "Fire tornado",
+  desc: "A spinning funnel of fire: spiral bands turning round it, licks flung off its sides, a ring of flame whirling at its foot, embers orbiting it in and out of view.",
+  tags: ["fire", "tornado", "vortex", "spell", "aoe", "loop"],
+  size: [120, 152],
+  origin: [60, 136],
+  duration: 2,
+  loop: true,
+  fps: 30,
+  bg: "ground",
+  options: {
+    palette: ["#4a1712", "#8a1f17", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"],
+    height: 80,
+    seed: 4,
+  },
+};
+
+const D = meta.duration, NL = noiseFor(D), SMOKE1 = hex("#5b5566"), SPIN = 3; // turns of the surface a loop
+
+function draw(p, t, o) {
+  const F = fit(o.palette, 9), H = hotFirst(F), S = o.seed, HT = o.height, ph = t / D;
+  const N = (rate, seed = 0, off = 0) => NL(t, rate, seed, off);
+  const GLOW = mix(mix(H[3], H[4], 0.5), WHITE, 0.25), SMOKE = mix(SMOKE1, H[6], 0.25), EMB = [H[1], H[2], H[4], H[6]];
+  // the funnel: narrow at the foot, flaring at the top, its spine snaking as it turns
+  const cx = (v, tt = t) => 3.2 * Math.sin(v * 4.2 - (tt / D) * TAU * 2) * v + 2 * Math.sin((tt / D) * TAU) * v;
+  const rad = (v) => 3.5 + 15 * Math.pow(v, 1.35);
+  const spin = (v, tt = t) => (tt / D) * TAU * SPIN + v * 5.5; // the surface turns, twisted up the column
+
+  // embers orbiting: behind the column first, in front after it
+  const orbit = [];
+  looped(t, D, 30, S + 500, (r) => ({ v0: r.range(0.02, 0.7), rise: r.range(0.12, 0.3), a: r.range(0, TAU), w: r.range(4, 7), out: r.range(4, 12), life: r.range(1.2, 2.4), big: r.chance(0.2) }), (q, age) => {
+    const v = q.v0 + q.rise * age, R = rad(Math.min(1, v)) + q.out + age * 4, a = q.a + q.w * age, k = 1 - age / q.life;
+    const x = cx(Math.min(1, v), t) + Math.cos(a) * R, y = -v * HT + Math.sin(a) * R * 0.28, z = Math.sin(a);
+    orbit.push({ x, y, z, k, vx: -Math.sin(a) * R * q.w, vy: Math.cos(a) * R * q.w * 0.28, big: q.big });
+  });
+  const embers = (front) => {
+    for (const e of orbit) {
+      if (e.z >= 0 !== front || e.k <= 0) continue;
+      const sp = Math.hypot(e.vx, e.vy) || 1, L = Math.min(5, 1 + sp * 0.025), c = e.k > 0.6 ? EMB[0] : e.k > 0.3 ? EMB[1] : EMB[2];
+      p.line(e.x - (e.vx / sp) * L, e.y - (e.vy / sp) * L, e.x, e.y, (u) => (u > 0.6 ? c : front ? EMB[3] : H[7]));
+      if (front) p.glow(e.x, e.y, 4, c, 0.4 * e.k);
+      else p.glow(e.x, e.y, 3, c, 0.15 * e.k);
+    }
+  };
+  // the ring of flame whirling at the foot: tongues round an ellipse, the far half dimmer
+  const ring = (front) => {
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU + (t / D) * TAU * 2, z = Math.sin(a);
+      if (z >= 0 !== front) continue;
+      const n = (S * 3 + i) * 19, R = 12 + 2 * N(2, n), x = Math.cos(a) * R, y = z * R * 0.25, h = (5 + 5 * (0.5 + 0.5 * N(5, n + 1))) * (front ? 1 : 0.8);
+      flameTongue(p, x, y, h, 1.6, -Math.cos(a + Math.PI / 2) * 3, N, n, H, front ? LAYERS : BACK_LAYERS);
+    }
+  };
+
+  // smoke spiralling off the top
+  looped(t, D, 20, S + 300, (r) => ({ a: r.range(0, TAU), life: r.range(1.2, 2), s: r.range(2.5, 4), vy: -r.range(12, 22) }), (q, age) => {
+    const R = rad(1) * (0.8 + age * 0.5), a = q.a + age * 3, x = cx(1, t - age) + Math.cos(a) * R, y = -HT - 2 + q.vy * age + Math.sin(a) * R * 0.25;
+    smokePuff(p, x, y, 1 - age / q.life, q.s, SMOKE);
+  });
+  floorLight(p, 0, 0.5, 40, 8, GLOW, 0.4);
+  embers(false);
+  ring(false);
+
+  // the column: each pixel's place round the funnel picks its heat; spiral bands turn up it; licks at its edges
+  const fl = 0.85 + 0.15 * N(7, S + 1);
+  for (let y = 0; y >= -HT * 1.2; y--) {
+    const v = -y / HT, vv = Math.min(1, v), c = cx(vv), r = rad(vv) * (1 + 0.08 * N(3, S + 2, y * 0.1)), sp = spin(v);
+    // near the top the funnel comes apart into spiral strands of flame climbing past its rim
+    const cut = clamp((v - 0.72) / 0.42);
+    const lickL = 0.3 * Math.max(0, pnoise(-y * 0.22 + ph * 18, 18, S + 3)), lickR = 0.3 * Math.max(0, pnoise(-y * 0.22 + ph * 18 + 9, 18, S + 4));
+    for (let x = Math.floor(c - r * 1.35); x <= Math.ceil(c + r * 1.35); x++) {
+      const dx = (x + 0.5 - c) / r, edge = 1 + (dx < 0 ? lickL : lickR);
+      if (Math.abs(dx) > edge) continue;
+      const th = Math.asin(clamp(dx, -1, 1)), depth = Math.cos(th), tear = 0.18 * pnoise(y * 0.45 + dx * 2 - ph * 30, 30, S + 6);
+      const band = 0.5 + 0.5 * Math.sin((th + sp + tear) * 3), streak = band * band * band;
+      if (cut > 0 && band < 0.35 + cut * 0.6 + 0.1 * pnoise(x * 0.7 + ph * 20, 20, S + 5)) continue;
+      // a darker body with thin bright streaks spiralling up it, hottest where it faces us, cooling up the column
+      let heat = 0.22 + 0.36 * depth + 0.5 * streak - 0.22 * vv + 0.1 * (1 - vv) - 0.25 * cut;
+      if (Math.abs(dx) > 1) heat = 0.3 - (Math.abs(dx) - 1) * 1.5;
+      heat *= fl;
+      const col = heat > 0.95 ? H[0] : heat > 0.82 ? H[1] : heat > 0.7 ? H[2] : heat > 0.58 ? H[3] : heat > 0.46 ? H[4] : heat > 0.34 ? H[5] : heat > 0.2 ? H[6] : H[7];
+      p.px(x, y, col);
+    }
+    if (y % 10 === 0 && v <= 1) p.glow(c, y, r * 2 + 8, GLOW, 0.22 * fl);
+  }
+
+  // flame flung off the spinning sides, cooling as it flies, some into smoke
+  looped(t, D, 70, S + 200, (r) => ({ v: r.range(0.05, 0.95), side: r.sign(), sp: r.range(20, 50), life: r.range(0.25, 0.5), s: r.range(1.4, 2.8), f: r.next() }), (q, age) => {
+    const tb = t - age, x0 = cx(q.v, tb) + q.side * rad(q.v), y0 = -q.v * HT;
+    const [x, y] = drift(x0, y0, q.side * q.sp, -q.sp * 0.6, age, 0, -60, 3, 3);
+    firePuff(p, x, y, 1 - age / q.life, q.s, q.f, H, 0.1, -q.side * 0.6, -0.8);
+  });
+  ring(true);
+  embers(true);
+  // light: the column's own glow and a wash round it
+  p.glow(0, -HT * 0.5, 80, GLOW, 0.28 * fl);
+  p.glow(0, -6, 18, H[2], 0.3 * fl);
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "draw", () => draw);
+
+
+},
+function(__e){
+// The flame-puff, smoke, spark, debris and floor-ring recipe is adapted from Sprite Fusion's open-source explosion
+// (https://www.spritefusion.com/pixel-art-vfx/explosion), and the column's levels, pulses and strands from its
+// holy light (https://www.spritefusion.com/pixel-art-vfx/holy-light), MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Bits, Lights, P, PF, B, Rng, fit, band, clamp, smooth, ease, noise, rand, TAU, WHITE, hex, mix, scale, rgb} = __r(1);
+const {hotFirst, flameTongue, simDraw, floorLight, LAYERS} = __r(34);
+
+const meta = {
+  name: "Flame pillar",
+  desc: "The floor cracks and glows, a column of fire erupts white-hot and roars, spewing embers and shedding flame, then collapses into rolling smoke.",
+  tags: ["fire", "pillar", "eruption", "spell", "ground", "one-shot"],
+  size: [184, 256],
+  origin: [92, 232],
+  duration: 5,
+  loop: false,
+  fps: 30,
+  bg: "ground",
+  options: {
+    palette: ["#4a1712", "#8a1f17", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"],
+    stone: "#4a3f69",
+    height: 140,
+    seed: 5,
+  },
+};
+
+const ERUPT = 0.55, RISE = 0.12, FALL = 1.95, GONE = 2.45, SOOT = hex("#0d0a12"), OUTLINE = hex("#1a1422"), WARM = rgb(255, 176, 96);
+
+function stone(c) {
+  c = hex(c);
+  return { light: mix(scale(c, 1.35), WHITE, 0.08), body: c, shade: scale(c, 0.64), dust: mix(scale(c, 1.2), rgb(150, 140, 150), 0.3) };
+}
+function rock(p, b, st) {
+  const r = 0.6 + b.s * 0.75, fade = Math.min(1, b.life / 0.5), lx = Math.cos(b.a) * r * 0.4, ly = Math.sin(b.a) * r * 0.4;
+  p.shade(b.x - r - 1, b.y - r - 1, b.x + r + 1, b.y + r + 1, (x, y, out) => {
+    const dx = x - b.x, dy = y - b.y, d = Math.hypot(dx * 1.15, dy);
+    if (d > r + 0.9) return;
+    const lit = dx * lx + dy * ly;
+    out.c = d > r ? OUTLINE : lit < -0.4 ? st.light : lit > 0.6 ? st.shade : st.body;
+    out.a = fade;
+  });
+}
+
+function create(o) {
+  const F = fit(o.palette, 9), H = hotFirst(F), HMAX = o.height, st = stone(o.stone), R = new Rng(o.seed), floor = () => 0;
+  const ps = new Particles({ rng: R, ground: floor, sparks: [H[1], H[2], H[4], H[5]] });
+  const bits = new Bits({ ground: floor }), lights = new Lights();
+  const GLOW = mix(mix(H[3], H[4], 0.5), WHITE, 0.25), S = o.seed * 13;
+  // the cracks: jagged lines racing out from the middle across the floor (squashed for perspective), with branches
+  const cracks = [];
+  const crack = (x, y, a, len, t0, w) => {
+    const pts = [[x, y]];
+    for (let d = 0; d < len; d += 2) (a += R.range(-0.55, 0.55)), (x += Math.cos(a) * 2), (y += Math.sin(a) * 0.76), pts.push([x, y]);
+    cracks.push({ pts, t0, grow: R.range(0.22, 0.36), w });
+    return pts;
+  };
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * TAU + R.range(-0.25, 0.25), pts = crack(R.range(-1, 1), R.range(-0.3, 0.3), a, R.range(20, 40), R.range(0, 0.16), 1);
+    const j = 3 + R.int(0, pts.length - 6);
+    if (pts.length > 8) crack(pts[j][0], pts[j][1], a + R.sign() * R.range(0.5, 1), R.range(6, 14), 0.18 + R.range(0, 0.15), 0);
+  }
+  // strands of hotter flame running up the column
+  const strands = Array.from({ length: 7 }, (_, i) => ({ o: (rand(i, S, 1) - 0.5) * 1.4, w: 0.05 + rand(i, S, 2) * 0.06, f: 1 + rand(i, S, 3) * 2 }));
+  let t = 0, erupted = false, fell = false;
+
+  const height = (tt) => (tt < ERUPT ? 0 : tt < ERUPT + RISE ? HMAX * ease.outCubic((tt - ERUPT) / RISE) : tt < FALL ? HMAX * (1 + 0.05 * noise(tt * 3, S)) : HMAX * (1 - ease.inQuad(clamp((tt - FALL) / (GONE - FALL)))));
+  const width = (tt) => (tt < ERUPT ? 0 : tt < FALL ? 12 * (1 + 0.45 * Math.exp(-(tt - ERUPT) * 7)) * (0.94 + 0.06 * noise(tt * 9, S + 1)) : 12 * (1 - smooth(FALL, GONE, tt)) + 1.5 * (1 - smooth(GONE - 0.1, GONE, tt)));
+  const heat = (tt) => smooth(0, ERUPT, tt) * 0.75 + 0.25 * smooth(ERUPT - 0.05, ERUPT + 0.1, tt) - smooth(GONE - 0.3, meta.duration - 0.6, tt) * 1.05;
+
+  function column(p) {
+    const h = height(t), w0 = width(t);
+    if (h < 1 || w0 < 0.3) return;
+    // a crown of tongues where the column breaks into the air, drawn first so the column flows up into them
+    if (t < FALL + 0.25) {
+      const k = clamp(w0 / 12), NZ = (rate, seed, off) => noise(t * rate + off, seed);
+      for (let i = 0; i < 5; i++) {
+        const n = (S + i) * 17, dx = (i - 2) * w0 * 0.4, th = (12 + 12 * (0.5 + 0.5 * noise(t * 3.3 + i, n))) * k * (i === 2 ? 1.2 : i % 4 === 0 ? 0.6 : 0.9);
+        flameTongue(p, dx + noise(t * 2, n + 2) * 1.5, -h + 12, th, 3.4 * k * (i % 4 === 0 ? 0.7 : 1), -dx * 0.3 + noise(t * 2.2, n + 1) * 3, NZ, n, H, LAYERS);
+      }
+    }
+    const lvlC = [H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]];
+    for (let y = 0; y >= -h; y--) {
+      const v = -y / h, cx = noise(-y * 0.04 + t * 1.6, S + 2) * 1.6 * v;
+      // licks bulge out of the sides and run up them; a wider splash at the foot; the top thins into tongues
+      const foot = 1 + 0.7 * Math.max(0, 1 - -y / 12) ** 2, top = 1 - smooth(0.82, 1, v) * 0.7;
+      const wl = w0 * foot * top * (1 + 0.65 * Math.max(0, noise(y * 0.2 + t * 8, S + 3)) ** 1.5), wr = w0 * foot * top * (1 + 0.65 * Math.max(0, noise(y * 0.2 + t * 8, S + 4)) ** 1.5);
+      const pulse = ((-y * 0.032 + t * 3.6) % 1) < 0.09 ? 1 : 0;
+      for (let x = Math.floor(cx - wl * 1.15); x <= Math.ceil(cx + wr * 1.15); x++) {
+        const dx = x + 0.5 - cx, q = Math.abs(dx) / (dx < 0 ? wl : wr);
+        if (q > 1.15) continue;
+        let lvl = q < 0.12 ? 0 : q < 0.26 ? 1 : q < 0.42 ? 2 : q < 0.56 ? 3 : q < 0.7 ? 4 : q < 0.84 ? 5 : q < 0.96 ? 6 : 7;
+        for (const s of strands) if (Math.abs(dx / w0 - s.o - 0.06 * Math.sin(t * s.f * 3 + s.o * 9)) < s.w) lvl = Math.max(0, lvl - 1);
+        lvl = Math.max(0, lvl - pulse);
+        if (lvl === 7 && rand(x, y, Math.floor(t * 20)) < 0.5) continue;
+        p.px(x, y, lvlC[lvl]);
+      }
+      if (y % 12 === 0) p.glow(cx, y, w0 * 2.4 + 8, GLOW, 0.28 * clamp(w0 / 12));
+    }
+    p.glow(0, -h * 0.45, 92, GLOW, 0.3 * clamp(w0 / 12));
+  }
+
+  function cracksDraw(p) {
+    const k = heat(t);
+    if (k <= -0.05) return;
+    for (const c of cracks) {
+      const n = Math.floor(c.pts.length * clamp((t - c.t0) / c.grow));
+      for (let i = 1; i < n; i++) {
+        const u = i / c.pts.length, hot = k * (1 - 0.45 * u), [x0, y0] = c.pts[i - 1], [x1, y1] = c.pts[i];
+        if (hot < 0) {
+          // cooled: soot that fades away
+          const a = 1 + hot * 3;
+          if (a > 0) p.line(x0, y0, x1, y1, SOOT, a);
+          continue;
+        }
+        const col = hot > 0.85 ? H[1] : hot > 0.65 ? H[2] : hot > 0.45 ? H[4] : hot > 0.25 ? H[5] : hot > 0.1 ? H[6] : H[7];
+        // the crack: a hot seam with a darker glowing lip, wider near the middle
+        if (c.w && i < c.pts.length * 0.5 && hot > 0.2) p.line(x0, y0 + 1, x1, y1 + 1, hot > 0.6 ? H[5] : H[6]), p.line(x0, y0 - 1, x1, y1 - 1, H[7]);
+        p.line(x0, y0, x1, y1, col);
+        if (i % 2 === 0) p.glow(x1, y1, 5 + 7 * hot, GLOW, 0.3 * hot);
+      }
+    }
+    // the floor glows from beneath while it's hot
+    if (k > 0) floorLight(p, 0, 0.5, 44, 8, GLOW, 0.35 * k);
+  }
+
+  return {
+    update(dt) {
+      t += dt;
+      // the charge: the crust in the middle glows, little flames lick out of it, heat leaks up the cracks
+      if (t < ERUPT && R.chance(0.6 * dt * 60 * smooth(0.15, ERUPT, t))) ps.spawn(P.FIRE, R.range(-5, 5), -1, R.range(-6, 6), -R.range(20, 45), R.range(0.15, 0.3), 0, R.range(1, 2.2));
+      if (t < ERUPT && R.chance(0.5 * dt * 60 * smooth(0, ERUPT, t))) {
+        const c = R.pick(cracks), i = R.int(0, Math.floor(c.pts.length * clamp((t - c.t0) / c.grow)) - 1);
+        if (i >= 0) {
+          const [x, y] = c.pts[i];
+          if (R.chance(0.5)) ps.spawn(P.FIRE, x, y - 1, R.range(-5, 5), -R.range(15, 35), R.range(0.15, 0.3), 0, R.range(0.8, 1.6));
+          else ps.spawn(P.EMBER, x, y - 1, R.range(-15, 15), -R.range(30, 70), R.range(0.5, 1), H[3], 1);
+        }
+      }
+      if (!erupted && t >= ERUPT) {
+        erupted = true;
+        lights.add(0, -40, 90, WARM, 0.7, 0.6);
+        lights.add(0, -8, 44, WHITE, 0.7, 0.1);
+        for (let i = 0; i < 70; i++) {
+          const a = -Math.PI / 2 + R.range(-1.1, 1.1), sp = R.range(100, 260);
+          ps.spawn(P.SPARK, R.range(-4, 4), -2, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.25, 0.7));
+        }
+        for (let i = 0; i < 18; i++) bits.add({ kind: B.CHUNK, x: R.range(-6, 6), y: -2, vx: R.range(-110, 110), vy: -R.range(150, 330), g: 1, drag: 0.4, bounce: 0.3, life: R.range(1.6, 2.4), a: R.range(0, TAU), va: R.range(-16, 16), s: R.int(1, 3) });
+        for (let i = 0; i < 60; i++) {
+          const a = -Math.PI / 2 + R.range(-0.9, 0.9), sp = R.range(80, 260);
+          ps.spawn(P.GRIT, R.range(-5, 5), -1, Math.cos(a) * sp, Math.sin(a) * sp, R.range(1, 1.8), R.pick([st.light, st.body, st.body, st.shade]), R.chance(0.4) ? 2 : 1);
+        }
+        for (let i = 0; i < 14; i++) {
+          const s = R.sign();
+          ps.spawn(P.SMOKE, s * R.range(2, 10), -R.range(1, 4), s * R.range(40, 110), -R.range(2, 10), R.range(1, 1.8), st.dust, R.range(4, 7), R.range(0, 0.06), PF.BIG);
+        }
+      }
+      // the roar: flame shed off the sides, a billowing cap, embers spewed high
+      const h = height(t), w = width(t);
+      if (t > ERUPT && t < GONE && h > 4) {
+        if (R.chance(0.9 * dt * 60)) {
+          const s = R.sign(), y = -R.range(4, h * 0.9);
+          ps.spawn(P.FIRE, s * w * R.range(0.7, 1.1), y, s * R.range(15, 40), -R.range(30, 70), R.range(0.25, 0.5), 0, R.range(1.6, 3.2), 0, R.chance(0.35) ? PF.SMOKES : 0);
+        }
+        if (R.chance(0.7 * dt * 60)) ps.spawn(P.FIRE, R.range(-w, w), -h + R.range(0, 6), R.range(-20, 20), -R.range(30, 80), R.range(0.35, 0.7), 0, R.range(3, 5.5), 0, R.chance(0.6) ? PF.SMOKES | (t < FALL - 0.3 ? PF.BIG : 0) : 0);
+        if (t < FALL && R.chance(0.5 * dt * 60)) ps.spawn(P.EMBER, R.range(-w, w) * 0.6, -h + 4, R.range(-60, 60), -R.range(50, 110), R.range(0.7, 1.3), H[3], R.chance(0.2) ? 2 : 1);
+      }
+      // the collapse: the falling top breaks into puffs that roll off as smoke
+      if (t >= FALL && !fell) fell = true;
+      if (fell && t < GONE - 0.1 && R.chance(1.6 * dt * 60)) ps.spawn(P.FIRE, R.range(-w - 2, w + 2), -h - R.range(0, 8), R.range(-30, 30), -R.range(10, 50), R.range(0.4, 0.75), 0, R.range(3.5, 6.5), 0, PF.SMOKES);
+      bits.update(dt);
+      for (const b of bits.list)
+        if (b.rest && !b.dusted) {
+          b.dusted = true;
+          for (let i = 0; i < 3; i++) ps.spawn(P.DUST, b.x + R.range(-1.5, 1.5), -0.5, R.sign() * R.range(8, 35), -R.range(2, 18), R.range(0.3, 0.6), st.dust, R.range(1.3, 2.6));
+        }
+      ps.update(dt);
+      lights.update(dt);
+    },
+    drawBack(p) {
+      cracksDraw(p);
+      simDraw(p, ps, H, "back");
+      const k = (t - ERUPT) / 0.45;
+      if (k > 0 && k < 1) band(p, 0, 0.5, 84 * ease.outCubic(k), 0.18, Math.max(1, 4 * (1 - k)), 1.15 - k, [st.body, st.light, H[4], H[1]], (g) => Math.sin(g) < 0);
+    },
+    draw(p) {
+      column(p);
+      for (const b of bits.list) rock(p, b, st);
+      simDraw(p, ps, H, "front");
+      const k = (t - ERUPT) / 0.45;
+      if (k > 0 && k < 1) band(p, 0, 0.5, 84 * ease.outCubic(k), 0.18, Math.max(1, 4 * (1 - k)), 1.15 - k, [st.body, st.light, H[4], H[1]], (g) => Math.sin(g) >= 0, k < 0.15);
+      // the eruption's white flash at the foot
+      const f = (t - ERUPT) / 0.08;
+      if (f > 0 && f < 1) {
+        p.ellipse(0, -2, 16 * (1 - f * 0.3), 6, H[2]);
+        p.ellipse(0, -3, 11 * (1 - f * 0.3), 4, f < 0.5 ? WHITE : H[1]);
+      }
+      lights.draw(p);
+    },
+  };
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
+
+
+},
+function(__e){
+// The impact's particle recipe (fire puffs that cool into smoke, sparks, embers, burning brands that land and
+// keep burning, rocks, grit, dust, scorch) is adapted from Sprite Fusion's open-source explosion
+// (https://www.spritefusion.com/pixel-art-vfx/explosion), MIT License, Copyright (c) 2026 Hugo Duprez.
+const {Particles, Bits, Lights, Blazes, P, PF, B, Rng, fit, band, flare, clamp, smooth, ease, noise, rand, TAU, WHITE, hex, mix, scale, rgb} = __r(1);
+const {hotFirst, flameBlade, simDraw, floorLight, LAYERS} = __r(34);
+
+const meta = {
+  name: "Meteor",
+  desc: "A burning rock streaks in from the upper left in a comet of fire and smashes into the floor: a white flash, a fireball, rocks and brands thrown, a glowing crater that cools.",
+  tags: ["fire", "meteor", "impact", "explosion", "spell", "debris", "one-shot"],
+  size: [272, 232],
+  origin: [150, 208],
+  duration: 5,
+  loop: false,
+  fps: 30,
+  bg: "ground",
+  options: {
+    palette: ["#4a1712", "#8a1f17", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"],
+    stone: "#4a3f69",
+    rock: ["#120e16", "#2a2230", "#463a4a", "#6a5a66"],
+    seed: 9,
+  },
+};
+
+const HIT = 0.62, FROM = [-112, -142], SOOT = hex("#0d0a12"), SOOT2 = hex("#17121d"), OUTLINE = hex("#1a1422"), WARM = rgb(255, 176, 96);
+
+function stone(c) {
+  c = hex(c);
+  return { light: mix(scale(c, 1.35), WHITE, 0.08), body: c, shade: scale(c, 0.64), dust: mix(scale(c, 1.2), rgb(150, 140, 150), 0.3) };
+}
+function rock(p, b, st) {
+  const r = 0.6 + b.s * 0.75, fade = Math.min(1, b.life / 0.5), lx = Math.cos(b.a) * r * 0.4, ly = Math.sin(b.a) * r * 0.4;
+  p.shade(b.x - r - 1, b.y - r - 1, b.x + r + 1, b.y + r + 1, (x, y, out) => {
+    const dx = x - b.x, dy = y - b.y, d = Math.hypot(dx * 1.15, dy);
+    if (d > r + 0.9) return;
+    const lit = dx * lx + dy * ly;
+    out.c = d > r ? OUTLINE : lit < -0.4 ? st.light : lit > 0.6 ? st.shade : st.body;
+    out.a = fade;
+  });
+}
+
+function create(o) {
+  const F = fit(o.palette, 9), H = hotFirst(F), RK = fit(o.rock, 4), st = stone(o.stone), R = new Rng(o.seed), floor = () => 0, S = o.seed * 11;
+  let blazes;
+  const ps = new Particles({ rng: R, ground: floor, sparks: [H[1], H[2], H[4], H[5]], onLand: (x, y) => blazes.add(x, y - 0.25, R.range(0.9, 1.6), R.range(0.5, 0.85)) });
+  blazes = new Blazes(ps);
+  const bits = new Bits({ ground: floor }), lights = new Lights(), GLOW = mix(mix(H[3], H[4], 0.5), WHITE, 0.25);
+  const len = Math.hypot(FROM[0], FROM[1]), ux = -FROM[0] / len, uy = -FROM[1] / len;
+  // the flight: speeding up a touch as it falls
+  const pos = (tt) => {
+    const k = ease.inQuad(clamp(tt / HIT)) * 0.35 + clamp(tt / HIT) * 0.65;
+    return [FROM[0] * (1 - k), FROM[1] * (1 - k)];
+  };
+  let t = 0, hit = false, last = pos(0);
+
+  // the meteor: a lumpy rock, white-hot on its leading face, cracks glowing over the dark back, an outline
+  const meteor = (p, x, y, R0, cool, alpha = 1) => {
+    p.shade(x - R0 - 2, y - R0 - 2, x + R0 + 2, y + R0 + 2, (px, py, out) => {
+      out.a = alpha;
+      const dx = px - x, dy = py - y, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx), rr = R0 * (1 + 0.18 * noise(a * 2.2 + 3, S) + 0.1 * noise(a * 5, S + 1));
+      if (d > rr + 1) return;
+      if (d > rr) return OUTLINE;
+      const face = (dx * ux + dy * uy) / Math.max(1, d), heat = (1 - cool) * (face * 0.6 + 0.5 - (d / rr) * 0.25);
+      if (heat > 0.62) return heat > 0.85 ? H[0] : heat > 0.74 ? H[1] : H[2];
+      if (heat > 0.42) return H[4];
+      const h = rand(Math.floor(px - x), Math.floor(py - y), S + 3);
+      if (h < 0.22 * (1 - cool * 0.7)) return (1 - cool) > 0.5 ? H[4] : H[6];
+      return dx * -0.6 + dy * -0.8 > 0 ? RK[2] : d / rr > 0.6 ? RK[0] : RK[1];
+    });
+  };
+  // the crater: hot rock pooled in the dent cooling to soot, a lip of broken floor
+  const crater = (p) => {
+    if (t < HIT) return;
+    const a = t - HIT, end = 1 - smooth(meta.duration - 1, meta.duration - 0.15, t), rx = 36 * Math.min(1, a / 0.08), ry = 6;
+    for (let y = -1; y <= 3; y++)
+      for (let x = Math.floor(-rx); x <= Math.ceil(rx); x++) {
+        const dx = (x + 0.5) / rx, dy = (y + 0.5) / ry, d = Math.sqrt(dx * dx + dy * dy);
+        if (d > 1) continue;
+        const k = rand(x * 31 + y, S + 5), T = Math.pow(clamp(1 - a / 2.6), 1.3) * (1.25 - d) - k * 0.35;
+        if (T > 0.06) {
+          const ramp = [H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]], c = ramp[Math.min(8, Math.floor((1 - Math.min(1, T)) * 8))];
+          p.dot(x, y, c, end);
+          if ((x & 3) === 0) p.glow(x + 0.5, y, 7, c, 0.2 * T * end);
+        } else p.dot(x, y, d < 0.55 ? SOOT : SOOT2, (d < 0.95 - k * 0.3 ? 1 : 1 - d) * end);
+      }
+    // the lip: broken floor heaped round the edge, lit by the glow inside
+    for (let x = -40; x <= 40; x++) {
+      const e = Math.abs(x) / 40, hh = e < 0.7 ? 0 : Math.round(2.4 * Math.sin(((e - 0.7) / 0.3) * Math.PI) * (0.6 + 0.4 * rand(x, S + 7)));
+      for (let j = 0; j < hh; j++) p.dot(x, -1 - j, j === hh - 1 ? mix(st.light, H[4], 0.5 * clamp(1 - a / 2)) : st.shade, end);
+      if (hh) p.dot(x, 0, OUTLINE, end);
+    }
+  };
+
+  return {
+    update(dt) {
+      t += dt;
+      if (t < HIT) {
+        // the flight: a comet of fire shed behind, smoke, sparks, embers
+        const [x, y] = pos(t), vx = (x - last[0]) / dt, vy = (y - last[1]) / dt;
+        last = [x, y];
+        for (let i = 0; i < 3; i++) {
+          if (!R.chance(0.8 * dt * 60)) continue;
+          ps.spawn(P.FIRE, x - ux * R.range(2, 8) + R.range(-3, 3), y - uy * R.range(2, 8) + R.range(-3, 3), vx * 0.15 + R.range(-20, 20), vy * 0.15 + R.range(-30, 10), R.range(0.3, 0.6), 0, R.range(3, 6), 0, R.chance(0.65) ? PF.SMOKES | PF.BIG : 0);
+        }
+        if (R.chance(0.6 * dt * 60)) ps.spawn(P.SPARK, x, y, vx * 0.35 + R.range(-80, 80), vy * 0.35 + R.range(-80, 40), R.range(0.2, 0.5));
+        if (R.chance(0.3 * dt * 60)) ps.spawn(P.EMBER, x, y, vx * 0.1 + R.range(-30, 30), vy * 0.1 + R.range(-40, 0), R.range(0.8, 1.6), H[3], R.chance(0.2) ? 2 : 1);
+      } else if (!hit) {
+        hit = true;
+        // the impact: flash, fireball thrown up and forward with the rock's momentum, a column, smoke, sparks
+        lights.add(0, -40, 100, WARM, 0.95, 0.9);
+        lights.add(0, -20, 46, WHITE, 0.9, 0.12);
+        for (let i = 0; i < 34; i++) {
+          const a = -Math.PI / 2 + R.range(-1.3, 1.3) + 0.25, sp = R.range(50, 210);
+          ps.spawn(P.FIRE, R.range(-6, 6), -R.range(2, 10), Math.cos(a) * sp, Math.sin(a) * sp * 0.75 - 30, R.range(0.5, 1.1), 0, R.range(5, 9), 0, R.chance(0.5) ? PF.SMOKES | PF.BIG : 0);
+        }
+        for (let i = 0; i < 9; i++) ps.spawn(P.FIRE, R.range(-6, 6), -6, R.range(-14, 14), -R.range(130, 220), R.range(0.8, 1.2), 0, R.range(6, 8.5), R.range(0, 0.12), PF.SMOKES | PF.BIG);
+        for (let i = 0; i < 20; i++) {
+          const a = R.range(-Math.PI, 0), d = R.range(4, 18);
+          ps.spawn(P.SMOKE, Math.cos(a) * d, -R.range(6, 24), Math.cos(a) * R.range(10, 40), -R.range(30, 110), R.range(1.8, 2.8), 0, R.range(8, 12), R.range(0.15, 0.5), PF.BIG);
+        }
+        for (let i = 0; i < 16; i++) {
+          const s = R.sign();
+          ps.spawn(P.SMOKE, s * R.range(4, 18), -R.range(1, 5), s * R.range(60, 130) + 10, -R.range(2, 12), R.range(1.2, 2.0), st.dust, R.range(5, 8), R.range(0, 0.06), PF.BIG);
+        }
+        for (let i = 0; i < 90; i++) {
+          const a = -Math.PI / 2 + R.range(-1.3, 1.3) + 0.15, sp = R.range(100, 300);
+          ps.spawn(P.SPARK, 0, -4, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.2, 0.7));
+        }
+        for (let i = 0; i < 36; i++) {
+          const a = R.range(0, TAU), sp = R.range(40, 150);
+          ps.spawn(P.EMBER, Math.cos(a) * 8, -8 + Math.sin(a) * 6, Math.cos(a) * sp, Math.sin(a) * sp - 70, R.range(1.2, 2.6), H[3]);
+        }
+        for (let i = 0; i < 10; i++) {
+          const a = -Math.PI / 2 + R.range(-1, 1.05), sp = R.range(130, 240);
+          ps.spawn(P.BRAND, 0, -6, Math.cos(a) * sp, Math.sin(a) * sp, R.range(0.7, 1.3));
+        }
+        for (let i = 0; i < 28; i++)
+          bits.add({ kind: B.CHUNK, x: R.range(-8, 8), y: -3, vx: R.range(-80, 110), vy: -R.range(140, 340), g: 1, drag: 0.4, bounce: 0.3, life: R.range(1.8, 2.8), a: R.range(0, TAU), va: R.range(-16, 16), s: R.int(1, 3), ramp: [OUTLINE, st.shade, st.body, st.light, mix(st.light, WHITE, 0.3)] });
+        for (let i = 0; i < 80; i++) {
+          const u = R.range(-1, 1), a = -Math.PI / 2 + u * 0.7 + 0.15, sp = R.range(90, 270) * (1 - 0.4 * Math.abs(u));
+          ps.spawn(P.GRIT, u * 6, -1, Math.cos(a) * sp, Math.sin(a) * sp, R.range(1.2, 2.2), R.pick([st.light, st.body, st.body, st.shade]), R.chance(0.45) ? 2 : 1);
+        }
+      }
+      bits.update(dt);
+      for (const b of bits.list)
+        if (b.rest && !b.dusted) {
+          b.dusted = true;
+          for (let i = 0; i < 3; i++) ps.spawn(P.DUST, b.x + R.range(-1.5, 1.5), -0.5, R.sign() * R.range(8, 35), -R.range(2, 18), R.range(0.3, 0.6), st.dust, R.range(1.3, 2.6));
+        }
+      blazes.update(dt);
+      ps.update(dt);
+      lights.update(dt);
+    },
+    drawBack(p) {
+      crater(p);
+      simDraw(p, ps, H, "back");
+      blazes.drawBack(p);
+      const k = (t - HIT) / 0.5;
+      if (k > 0 && k < 1) band(p, 0, 0.5, 110 * ease.outCubic(k), 0.16, Math.max(1, 5 * (1 - k)), 1.15 - k, [st.body, st.light, H[4], H[1]], (g) => Math.sin(g) < 0);
+    },
+    draw(p) {
+      const k = (t - HIT) / 0.5;
+      if (k > 0 && k < 1) band(p, 0, 0.5, 110 * ease.outCubic(k), 0.16, Math.max(1, 5 * (1 - k)), 1.15 - k, [st.body, st.light, H[4], H[1]], (g) => Math.sin(g) >= 0, k < 0.12);
+      for (const b of bits.list) rock(p, b, st);
+      if (t < HIT) {
+        // the comet: tongues of flame streaming back off the rock, the rock, its light; the floor lights up below
+        const [x, y] = pos(t), NZ = (rate, seed = 0, off = 0) => noise(t * rate + off, seed);
+        floorLight(p, 0, 0.5, 30 + 40 * (t / HIT), 7, GLOW, 0.5 * (t / HIT) ** 2);
+        [[36, 7, 0], [26, 7.5, -2.5], [26, 7.5, 2.5], [16, 8, 0]].forEach(([L, w, off], i) => {
+          const n = (S + i) * 13;
+          flameBlade(p, x - uy * off, y + ux * off, -ux, -uy, L * (0.85 + 0.25 * NZ(5, n)), w, NZ(3, n + 3) * 3, NZ, n, H, LAYERS, 0.5, 1.6);
+        });
+        meteor(p, x, y, 6.5, 0);
+        p.glow(x, y, 46, GLOW, 0.55);
+        p.glow(x, y, 12, H[1], 0.4);
+      } else {
+        // the core of the meteor sits half-buried in the crater, cooling
+        const a = t - HIT, cool = clamp(a / 2.8), end = 1 - smooth(meta.duration - 1.1, meta.duration - 0.2, t);
+        if (end > 0) {
+          meteor(p, 0, 0, 5.5, cool, end);
+          p.glow(0, -2, 22, GLOW, 0.4 * (1 - cool) * end);
+        }
+      }
+      simDraw(p, ps, H, "front");
+      // the hero frame: a white-hot flash and a flare of rays
+      const f = (t - HIT) / 0.08;
+      if (f > 0 && f < 1) {
+        p.circle(0, -6, 11 * (1 - f * 0.3) + 1.5, H[3]);
+        p.circle(0, -6, 11 * (1 - f * 0.3), f < 0.5 ? H[1] : H[2]);
+        p.circle(0, -6, 7 * (1 - f * 0.3), f < 0.5 ? WHITE : H[1]);
+      }
+      const fr = (t - HIT) / 0.24;
+      if (fr > 0 && fr < 1) flare(p, 0, -6, 44 * Math.pow(1 - fr, 1.4), 1 - fr, [H[6], H[4], H[2], H[1]]);
+      lights.draw(p);
+    },
+  };
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "create", () => create);
+
+
+},
+function(__e){
+const {fit, hex, mix, clamp, wrap, lerp, smooth, ease, TAU} = __r(1);
+const {Grid, shift} = __r(50);
+
+const meta = {
+  name: "Bird",
+  desc: "A songbird flies in place: bursts of wingbeats that lift its body on each downstroke, a glide on spread wings, its tail fanning, a loose feather drifting away.",
+  tags: ["critter", "bird", "flying", "animal", "loop"],
+  size: [112, 80],
+  origin: [56, 40],
+  duration: 2.4,
+  loop: true,
+  fps: 30,
+  bg: "sky",
+  options: {
+    palette: ["#0a0e1e", "#18244a", "#24407a", "#3466aa", "#5a94d4", "#9cc8f0", "#eaf6ff"],
+    breast: ["#4a1a0e", "#a8441c", "#e8783a", "#ffb070"],
+    seed: 1,
+  },
+};
+
+const D = meta.duration, GRID = new Grid(-26, -26, 52, 46), BEAK = hex("#f0b030"), BEAKD = hex("#a86a18");
+// the near wing's key poses, points from the shoulder: leading edge to the tip, then the trailing feathers back
+const POSE = {
+  up: [[0, 0], [-1, -8], [-5, -15], [-8, -13.5], [-10.5, -10.5], [-11, -7], [-9, -3], [-6, 1]],
+  mid: [[0, 0], [-3, -2.5], [-9, -2.5], [-10.5, -0.5], [-10, 1.2], [-8.5, 2], [-7, 2.2], [-5, 2]],
+  down: [[0, 0], [-1, 6], [-3.5, 12], [-6, 11], [-7.5, 8.5], [-8, 6], [-7, 3], [-5, 2]],
+  fold: [[0, 0], [-3, -4], [-10, -5.5], [-11, -4], [-10, -2.5], [-8.5, -1], [-7, 0.5], [-5, 1.5]],
+  glide: [[0, 0], [-2, -5], [-7, -10], [-10, -9], [-12, -6.5], [-11.5, -3.5], [-9, -1], [-6, 1]],
+};
+const mixPose = (a, b, u) => a.map(([x, y], i) => [lerp(x, b[i][0], u), lerp(y, b[i][1], u)]);
+// flapping until GLIDE, then a glide on spread wings
+const FLAPS = 4, GLIDE = 1.5;
+function wing(t) {
+  t = wrap(t, D);
+  if (t < GLIDE) {
+    const u = ((t / GLIDE) * FLAPS) % 1;
+    // a quick downstroke through the stretched-out middle, a slower upstroke folded close
+    if (u < 0.4) {
+      const k = ease.inOutSine(u / 0.4);
+      return { pts: k < 0.5 ? mixPose(POSE.up, POSE.mid, k * 2) : mixPose(POSE.mid, POSE.down, k * 2 - 1), down: true, u };
+    }
+    const k = ease.inOutSine((u - 0.4) / 0.6);
+    return { pts: k < 0.5 ? mixPose(POSE.down, POSE.fold, k * 2) : mixPose(POSE.fold, POSE.up, k * 2 - 1), down: false, u };
+  }
+  const g = (t - GLIDE) / (D - GLIDE), into = smooth(0, 0.15, g), out = smooth(0.85, 1, g);
+  return { pts: mixPose(mixPose(POSE.up, POSE.glide, into), POSE.up, out), down: false, u: 0 };
+}
+// the body rises as the wings push down, and sinks a touch through the glide
+function lift(t) {
+  t = wrap(t, D);
+  let y = 0;
+  for (let k = 0; k < 6; k++) if (wing(t - k * 0.02).down) y -= 0.45;
+  if (t >= GLIDE) y += 2.2 * Math.sin(Math.PI * ((t - GLIDE) / (D - GLIDE)));
+  return y + 1.2;
+}
+
+const SH = [1, -2];
+const wingPts = (w, far) => w.pts.map(([x, y]) => [SH[0] + x - (far ? 1 : 0), SH[1] + y * (far ? 0.85 : 1) - (far ? 1 : 0)]);
+
+function bird(g, C, Br, t, w) {
+  g.clear();
+  // the far wing, behind the body and in shadow
+  g.poly(wingPts(w, true), C[1]);
+  // the tail: three feathers fanning as it brakes and lifts
+  const tf = 0.25 + 0.35 * Math.sin((t / D) * TAU * 2);
+  for (let i = 0; i < 3; i++) {
+    const a = Math.PI + (i - 1) * tf * 0.5 + 0.1, L = 9 - Math.abs(i - 1);
+    g.poly([[-7, -2.4], [-7 + Math.cos(a) * L, -1 + Math.sin(a) * L - 1.2], [-7 + Math.cos(a) * L, -1 + Math.sin(a) * L + 1.2], [-7, 0.6]], i === 0 ? C[3] : C[2]);
+  }
+  // body and head: a blue back lit from above, a rust breast, a pale belly
+  const inBody = (x, y) => ((x + 1) / 8.5) ** 2 + (y / 5.2) ** 2 <= 1 || (x - 6.5) ** 2 + (y + 3) ** 2 <= 4.6 ** 2;
+  g.shade(-10, -9, 12, 6, (x, y) => {
+    if (!inBody(x, y)) return 0;
+    const top = !inBody(x, y - 2.2), under = !inBody(x + 0.5, y + 1.6);
+    if (y > -0.5 && x > -2.5) return under ? Br[1] : x > 3 && y < 2 ? Br[3] : Br[2];
+    if (y > 1.5) return under ? C[4] : C[5];
+    return top ? (x > 2 ? C[5] : C[4]) : y < -3.5 && x > 3 ? C[4] : C[3];
+  });
+  // beak, eye with a glint, a dark cap stripe
+  g.poly([[10.5, -4.5], [14.5, -3], [10.5, -2]], (x, y) => (y < -3 ? BEAK : BEAKD));
+  g.set(8, -4, C[0]); g.set(8, -5, C[6]); g.set(9, -4, C[0]);
+  g.line(5, -7, 9, -6.5, C[2]);
+  // the near wing: lit along its leading edge, the flight feathers splayed at the tips
+  const wp = wingPts(w, false);
+  const edge = (x, y) => {
+    let m = Infinity;
+    for (let i = 1; i < 3; i++) {
+      const [ax, ay] = wp[i - 1], [bx, by] = wp[i], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, u = clamp(((x - ax) * dx + (y - ay) * dy) / L2);
+      m = Math.min(m, Math.hypot(ax + dx * u - x, ay + dy * u - y));
+    }
+    return m;
+  };
+  g.poly(wp, (x, y) => {
+    const d = edge(x, y);
+    return d < 1.2 ? C[5] : d < 3 ? C[4] : C[3];
+  });
+  // the flight feathers: dark lines splaying from the wrist to the trailing edge
+  for (let i = 3; i < 7; i++) g.line(wp[1][0], wp[1][1], lerp(wp[1][0], wp[i][0], 0.92), lerp(wp[1][1], wp[i][1], 0.92), C[2]);
+  g.outline(C[0]);
+}
+
+function draw(p, time, o) {
+  const t = shift(time, D, o.seed), C = fit(o.palette, 7), Br = fit(o.breast, 4), w = wing(t), y = lift(t);
+  const g = GRID;
+  // on the downstroke, a see-through echo of the wing a moment before smears the beat
+  if (w.down && w.u > 0.1) {
+    const s = t - 0.05, ws = wing(s);
+    g.clear();
+    g.poly(wingPts(ws, false), C[6]);
+    g.a.fill(0.42);
+    g.draw(p, 1, 0, Math.round(lift(s)));
+  }
+  bird(g, C, Br, t, w);
+  g.draw(p, 1, 0, Math.round(y));
+  // a loose feather drifts off and rocks down out of sight
+  const fa = wrap(t - 0.45, D);
+  if (fa < 1.8) {
+    const fx = -6 - 14 * fa - 3 * Math.sin(fa * 5), fy = 4 + 9 * fa + 1.5 * Math.cos(fa * 5) * fa, rock = Math.sin(fa * 5) * 0.8;
+    const a = Math.min(1, (1.8 - fa) * 2);
+    for (let i = -2; i <= 2; i++) p.dot(fx + i * Math.cos(rock), fy + i * Math.sin(rock) * 0.8, i < 0 ? C[5] : C[4], a);
+    p.dot(fx + 2.6 * Math.cos(rock), fy + 2.6 * Math.sin(rock) * 0.8, C[3], a);
+  }
+  // a little moonlight on its back
+  p.glow(2, y - 6, 16, C[5], 0.12);
+}
+
+__def(__e, "meta", () => meta);
+__def(__e, "draw", () => draw);
 
 
 }];
