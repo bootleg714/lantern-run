@@ -133,6 +133,7 @@ td.where { color: var(--muted); white-space: nowrap; }
             <tr><td>Rimeskull</td><td class="where">Stage 2 boss</td><td>Giant frost skull. Fire does double, ice does nothing. Dodge its ice shards and falling icicles, run from the red mark before it slams, then stomp it while it's stuck. At half health it blows a blizzard.</td></tr>
             <tr><td>Cinder Wyrm</td><td class="where">Stage 3 mid boss</td><td>Giant fire snake. Ice does double and slows it; fire does nothing. Jump its spit, get out of its breath, and stomp its back. At half health it raises flame pillars.</td></tr>
             <tr><td>Pyre Phoenix</td><td class="where">Stage 3 boss</td><td>Firebird. Ice does double and stuns it; fire does nothing. Leave the red marks before meteors land, dodge the feathers, stomp it after it dives. At half health it sends fire tornadoes to jump.</td></tr>
+            <tr><td>The Veilkeeper</td><td class="where">Stage 4 mid boss</td><td>Fire does double. Ice stuns it; stomps do nothing. Dodge the curse orbs and jump the root waves.</td></tr>
             <tr><td>The Hollow Eye</td><td class="where">Stage 4 boss</td><td>Zap does double, ice stuns it. Dodge the lightning marks and stomp it from the ledges.</td></tr>
           </tbody>
         </table>
@@ -280,7 +281,7 @@ const AREAS = [
 ];
 // ---------------- stages ----------------
 // A stage is a run of 64-tile segments. Each segment has an area theme (art, weather, enemy palettes) and a layout.
-// Stages 1-3 are three segments of one area each (Dusk Meadow, Frost Hollow, Ember Depths); Stage 4 is Haunted Grove for now.
+// Each stage has three segments of one area, a mid boss, and an end boss.
 const STAGES = [
   { title: "Dusk Meadow", segs: [
     { theme: 0, layout: "meadow1", name: "Dusk Meadow", tip: "Stomp what you can. X casts, Q switches spells." },
@@ -298,7 +299,9 @@ const STAGES = [
     { theme: 2, layout: "ember3", name: "Magma Halls", tip: "Wings of fire are circling overhead." },
   ] },
   { title: "Haunted Grove", segs: [
-    { theme: 3, layout: "grove" },
+    { theme: 3, layout: "grove1", name: "Haunted Grove", tip: "Ghosts cannot be stomped. Fire and zap clear the path." },
+    { theme: 3, layout: "grove2", name: "Wispwood Crossing", tip: "Follow the lanterns. The Veilkeeper guards the crossing." },
+    { theme: 3, layout: "grove3", name: "Hollow Sanctum", tip: "The Hollow Eye waits beyond the roots. Save some lightning." },
   ] },
 ];
 let stageI = 0, SEGS = STAGES[0].segs, NA = SEGS.length, COLS = AW * NA, stageScore0 = 0, stageCoins0 = 0;
@@ -428,15 +431,44 @@ function buildLevel() {
       SPEC.arenas.push({ kind: "phoenix", x0: (o + 42) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
       SPEC.chest = X(52);
     }
-    if (lay === "grove") {
-      ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 63); ground(40, 42, 7); plank(48, 50, 6); plank(56, 58, 6);
+    if (lay === "grove1") {
+      // Preserve the original grove opening, then teach ghost combat on safe ground.
+      ground(0, 12); ground(16, 30); plank(20, 23, 6); plank(32, 33, 7); ground(35, 49); ground(40, 42, 7);
+      plank(51, 53, 7); ground(55, 63);
+      SPEC.torches.push(X(4), X(18), X(37), X(46), X(58));
+      SPEC.wisps.push(X(6), X(36), X(59));
+      coinsRow(5, 9, 128); SPEC.coins.push([X(13), 112], [X(14), 100], [X(15), 112]);
+      coinsRow(20, 23, 80); coinsRow(40, 42, 96); coinsRow(51, 53, 96); coinsRow(57, 61, 128);
+      en("ghost", 11, { gy: 110 }); en("slime", 25, { x0: 17, x1: 29 }); en("eyeball", 29);
+      en("ghost", 38, { gy: 100 }); en("snake", 46, { x0: 44, x1: 48 }); en("bat", 53, { by: 55, x0: 50, x1: 56 });
+      en("ghost", 60, { gy: 105 });
+      SPEC.hearts.push([X(21), 96]); SPEC.potions.push([X(41), 112]); SPEC.flags.push(X(35));
+    }
+    if (lay === "grove2") {
+      // Short bridge hops, then a flat arena with reachable perches for every hero.
+      ground(0, 10); plank(12, 14, 7); ground(16, 24); ground(20, 22, 7);
+      plank(26, 28, 6); ground(30, 38); plank(33, 35, 6); ground(41, 63);
+      plank(49, 51, 6); plank(58, 60, 6);
+      SPEC.torches.push(X(5), X(17), X(31), X(43), X(53), X(62));
+      SPEC.wisps.push(X(8), X(32));
+      coinsRow(4, 8, 128); coinsRow(12, 14, 96); coinsRow(20, 22, 96); coinsRow(26, 28, 80); coinsRow(33, 35, 80);
+      en("slime", 7, { x0: 3, x1: 10 }); en("bat", 14, { by: 55, x0: 11, x1: 16 });
+      en("ghost", 21, { gy: 86 }); en("eyeball", 32); en("snake", 36, { x0: 35, x1: 38 });
+      SPEC.hearts.push([X(42), 144]); SPEC.potions.push([X(34), 96]); SPEC.flags.push(X(43));
+      SPEC.arenas.push({ kind: "veil", x0: (o + 46) * T, x1: (o + 64) * T, floor: 9 * T });
+    }
+    if (lay === "grove3") {
+      // The original Hollow Eye arena remains intact, after a longer final approach.
+      ground(0, 11); plank(13, 15, 7); ground(17, 26); ground(20, 22, 7);
+      plank(28, 30, 6); ground(32, 63); ground(36, 38, 7);
+      plank(48, 50, 6); plank(56, 58, 6);
       for (let y = 0; y < ROWS; y++) grid[y][o + 63] = GR;
-      SPEC.torches.push(X(4), X(18), X(37), X(46), X(61));
-      coinsRow(5, 9, 128); SPEC.coins.push([X(13), 112], [X(14), 100], [X(15), 112]); coinsRow(20, 23, 80); coinsRow(40, 42, 96);
-      en("ghost", 11, { gy: 110 }); en("slime", 25, { x0: 17, x1: 29 }); en("eyeball", 29); en("ghost", 38, { gy: 100 });
-      SPEC.hearts.push([X(21), 96], [X(41), 112]); SPEC.wisps.push(X(6));
-      // final boss: the Hollow Eye guards the chest; the two ledges are for stomping it
-      SPEC.flags.push(X(36));
+      SPEC.torches.push(X(4), X(18), X(33), X(46), X(61));
+      SPEC.wisps.push(X(6), X(34));
+      coinsRow(4, 8, 128); coinsRow(13, 15, 96); coinsRow(20, 22, 96); coinsRow(28, 30, 80);
+      en("ghost", 9, { gy: 108 }); en("bat", 15, { by: 54, x0: 12, x1: 17 });
+      en("slime", 24, { x0: 23, x1: 26 }); en("eyeball", 33); en("ghost", 37, { gy: 78 });
+      SPEC.potions.push([X(21), 112]); SPEC.hearts.push([X(41), 144]); SPEC.flags.push(X(42));
       SPEC.arenas.push({ kind: "eye", x0: (o + 44) * T, x1: (o + 63) * T, floor: 9 * T, chest: true });
       SPEC.chest = X(53);
     }
@@ -1067,6 +1099,84 @@ function drawGloop(A) {
       if (px >= 0 && py >= 0 && px < W && py < H) frame.color[py * W + px] = B.flash > 0 ? 0xffffffff : CROWN_PAL[ch];
     }
   }
+}
+
+// ---- The Veilkeeper (Stage 4 mid boss)
+const VEIL_PAL = ["#10122a", "#243653", "#3a6273", "#5a9b9c", "#91d9c3", "#d3ffe4", "#ffffff"];
+function makeVeil(A) {
+  return { kind: "veil", name: "The Veilkeeper", hp: 20, max: 20, x: (A.x0 + A.x1) / 2 + 45, cy: A.floor - 40,
+    state: "wait", t: 0, anim: 0, flash: 0, touchCool: 0, phase: 1, phaseShown: 1, seq: 0, atk: 1,
+    stunT: 0, queue: [], tx: 0, deathT: 0, nextPop: 0 };
+}
+function updateVeil(A, dt) {
+  const B = A.boss;
+  B.t += dt; B.anim += dt; B.flash = Math.max(0, B.flash - dt); B.touchCool = Math.max(0, B.touchCool - dt);
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying") {
+    B.deathT += dt;
+    if (B.deathT > B.nextPop) { B.nextPop += 0.22; spawn(poof, { x: B.x + (Math.random() - 0.5) * 40, y: B.cy + 22, palette: VEIL_PAL }); }
+    if (B.deathT > 1.4) {
+      setB(B, "dead"); A.locked = false; A.cleared = true; B.queue = []; hazards = [];
+      projectiles = projectiles.filter(p => p.kind !== "shot");
+      spawn(manaBurst, { x: B.x, y: B.cy, palette: VEIL_PAL });
+      spawn(damageNumber, { x: B.x, y: B.cy - 25, text: "+2500", palette: GOLD });
+      score += 2500; shake = 0.3;
+      hearts.push({ x: B.x, y: A.floor, b: bakeOf(heartPickup, {}, true) });
+      say("The veil lifts!", "The path to Hollow Sanctum is open.", 4000);
+    }
+    return;
+  }
+  B.phase = B.hp > B.max / 2 ? 1 : 2;
+  if (B.phase > B.phaseShown) {
+    B.phaseShown = B.phase; spawn(manaBurst, { x: B.x, y: B.cy, palette: VEIL_PAL });
+    say("", "The roots are waking. Jump their racing tips!", 3000);
+  }
+  for (let i = B.queue.length - 1; i >= 0; i--) { const q = B.queue[i]; q.t -= dt; if (q.t <= 0) { B.queue.splice(i, 1); q.f(); } }
+  if (B.stunT > 0) { B.stunT = Math.max(0, B.stunT - dt); return; }
+  if (B.state === "intro") { if (B.t > 1.5) setB(B, "float"); return; }
+  if (B.state === "blink") {
+    // The destination portal is visible for 0.8 s before the move; no instant contact hit.
+    if (B.t > 0.8) { spawn(poof, { x: B.x, y: B.cy + 25, palette: VEIL_PAL }); B.x = B.tx; setB(B, "recover"); }
+    return;
+  }
+  if (B.state === "recover") { if (B.t > 0.75) { setB(B, "float"); B.atk = 0.5; } return; }
+  B.cy = A.floor - 40 + Math.sin(B.anim * 1.7) * 6;
+  B.atk -= dt;
+  if (B.atk > 0) return;
+  const list = B.phase === 1 ? ["volley", "blink", "volley"] : ["roots", "volley", "blink", "volley"];
+  const attack = list[B.seq++ % list.length]; B.atk = B.phase === 1 ? 1.9 : 1.6;
+  if (attack === "blink") {
+    B.tx = P.x + 6 < (A.x0 + A.x1) / 2 ? A.x1 - 54 : A.x0 + 54;
+    spawn(spawnPortal, { x: B.tx, y: A.floor, palette: VEIL_PAL }); setB(B, "blink");
+  } else if (attack === "roots") {
+    spawn(manaBurst, { x: B.x, y: A.floor, palette: ROOT_PAL });
+    B.queue.push({ t: 0.65, f: () => {
+      for (const dir of [-1, 1]) {
+        const ox = B.x + dir * 20;
+        hazards.push({ kind: "spikes", ox, dir, reach: 118, floor: A.floor, t: 0,
+          fx: createFx(iceSpikes, { x: ox, y: A.floor, flip: dir < 0, reach: 118, height: 22, palette: ROOT_PAL }) });
+      }
+      shake = 0.2;
+    } });
+  } else {
+    // Aim is fixed when the volley begins, leaving room to dodge instead of tracking every shot.
+    const angle = Math.atan2(P.y + P.h / 2 - B.cy, P.x + 6 - B.x);
+    spawn(manaBurst, { x: B.x, y: B.cy, palette: VEIL_PAL });
+    for (let i = 0; i < (B.phase === 1 ? 3 : 5); i++) B.queue.push({ t: 0.4 + i * 0.18, f: () => {
+      const a = angle + (B.phase === 1 ? 0 : (i - 2) * 0.15), vx = Math.cos(a) * 120, vy = Math.sin(a) * 120;
+      projectiles.push({ kind: "shot", cause: "curse", x: B.x, y: B.cy, vx, vy, life: 3,
+        fx: createFx(plasmaShot, { x: B.x, y: B.cy, angle: a, palette: VEIL_PAL }) });
+    } });
+  }
+}
+function drawVeil(A) {
+  const B = A.boss;
+  if (B.state === "wait" || B.state === "dead") return;
+  if (B.state === "dying" && Math.floor(B.deathT * 16) % 3 === 0) return;
+  const b = bakeOf(ghost, { seed: 2, hover: 0, palette: B.flash > 0 ? WHITE7 : B.stunT > 0 ? ICE : VEIL_PAL });
+  blitScaled(frame, b, B.anim, B.x, B.cy + 28, 1.8, 1.8, A.floor + 2);
+  addGlow(B.x, B.cy, 32, [110, 240, 190], 0.3);
+  if (B.state === "blink") addGlow(B.tx, A.floor - 20, 24, [150, 255, 210], 0.5);
 }
 
 // ---- The Hollow Eye
@@ -1852,6 +1962,10 @@ function drawPhoenix(A) {
 
 // ---- the bosses, by kind
 const BOSSES = {
+  veil: { make: makeVeil, update: updateVeil, draw: drawVeil, cause: "curse", bar: ["#62c7ad", "#d3ffe4"], wall: [110, 240, 190], mult: { fire: 2, stomp: 0 },
+    box: B => [B.x - 22, B.cy - 28, 44, 54],
+    onHit: (B, how) => { if (how === "ice") B.stunT = 0.65; },
+    intro: A => { spawn(spawnPortal, { x: A.boss.x, y: A.floor }); say("The Veilkeeper", "Fire burns through the veil. Ghosts cannot be stomped.", 5000); } },
   gloop: { make: makeGloop, update: updateGloop, draw: drawGloop, cause: "ice", bar: ["#4fbcf5", "#c8f0ff"], wall: [90, 190, 255], mult: { fire: 2, ice: 0 },
     box: (B) => [B.x - 23 * B.sx, B.y - 32 * B.sy, 46 * B.sx, 32 * B.sy],
     intro: () => { say("King Gloop", "Fire melts him. Jump over the frost lines when he lands.", 5000); shake = 0.3; } },
@@ -1977,6 +2091,8 @@ function heroVsBosses() {
       P.vy = down(...JUMP) ? -420 : -300; B.touchCool = 0.25;
       continue;
     }
+    // A newly arrived Veilkeeper gives the player its full recovery window to move away.
+    if (B.kind === "veil" && B.state === "recover") continue;
     hurt(BOSSES[B.kind].cause, B.x);
   }
 }

@@ -1,6 +1,6 @@
 # Lantern Run
 
-A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Stage 1 runs through Dusk Meadow, Bramble Hills and Duskwood Edge, with a mid boss and an end boss. Stage 2 crosses Frost Hollow, Glacier Pass and Crystal Lake, with two more. Stage 3 descends through Ember Depths, Cinder Steps and Magma Halls, and Stage 4 is Haunted Grove and the Hollow Eye. Stomp and blast a bestiary of critters and open the chest at the end of each stage.
+A 2D pixel-art side-scroller starring Biscuit, a small blue hamster wizard. Stage 1 runs through Dusk Meadow, Bramble Hills and Duskwood Edge, with a mid boss and an end boss. Stage 2 crosses Frost Hollow, Glacier Pass and Crystal Lake, with two more. Stage 3 descends through Ember Depths, Cinder Steps and Magma Halls, and Stage 4 crosses Haunted Grove, Wispwood Crossing and Hollow Sanctum. Stomp and blast a bestiary of critters and open the chest at the end of each stage.
 
 Every enemy, spell, status effect, death, pickup and weather overlay comes from [pixelfx](https://github.com/patch-gg/pixelfx). The ground, trees, props and other backdrops come from free itch.io packs, recolored per area. The Haunted Grove backdrop is original AI-generated artwork.
 
@@ -38,9 +38,9 @@ Controller (standard Xbox-style layout): move with the left stick or D-pad, jump
 | 1 | Dusk Meadow, Bramble Hills, Duskwood Edge | Old Croaker | Duskwing |
 | 2 | Frost Hollow, Glacier Pass, Crystal Lake | King Gloop | Rimeskull |
 | 3 | Ember Depths, Cinder Steps, Magma Halls | Cinder Wyrm | Pyre Phoenix |
-| 4 | Haunted Grove | none yet | The Hollow Eye |
+| 4 | Haunted Grove, Wispwood Crossing, Hollow Sanctum | The Veilkeeper | The Hollow Eye |
 
-Each section is 64 tiles. Opening the chest after the end boss clears the stage; press jump to go on to the next one, keeping your score and hearts. R (or Start) restarts the stage you're on. The Stage links under the game, or `?stage=2` in the address, start at a given stage. Stage 4 is a single section for now and is meant to grow to three like the others.
+Each section is 64 tiles. Opening the chest after the end boss clears the stage; press jump to go on to the next one, keeping your score and hearts. R (or Start) restarts the stage you're on. The Stage links under the game, or `?stage=2` in the address, start at a given stage. All four stages have three sections, a mid boss and an end boss.
 
 ## Bosses
 
@@ -54,9 +54,10 @@ Walking into a boss arena seals it behind rune walls and shows the boss's health
 | Rimeskull | Stage 2, end of Crystal Lake, guarding the chest | Fires aimed ice shards; drops icicles around you; rises over you, shudders above a red mark and slams down, sending frost spikes both ways, then sits stuck in the ice (stomp it then). At half health it also blows a blizzard that pushes you while icicles fall. | Fire (double damage). Ice does nothing; zap stuns it briefly. Stomp it from the two ledges. |
 | Cinder Wyrm | Stage 3, end of Cinder Steps | Slithers after you; rears up and spits arcs of fireballs; glows at the mouth, then breathes a long jet of fire. At half health it also raises flame pillars around you. | Ice (double damage, and it slows it). Fire does nothing. Stomp its back. |
 | Pyre Phoenix | Stage 3, end of Magma Halls, guarding the chest | Calls meteors down onto red ground markers; sheds fans of burning feathers; glows over a red mark and dives at it, then sits dazed (stomp it then). At half health it also sends fire tornadoes rolling across the floor (jump them). | Ice (double damage); ice stuns it. Fire does nothing. Stomp it from the two ledges. |
-| The Hollow Eye | Stage 4, end of Haunted Grove, guarding the chest | Phase 1: aimed orb volleys and lightning strikes. Phase 2: orb spreads, double strikes and ghost summons. Phase 3: dives to the floor, sends root spikes out, then sits dizzy. | Zap (double damage); ice stuns it. Stomp it from the two ledges. |
+| The Veilkeeper | Stage 4, end of Wispwood Crossing | Fires telegraphed curse-orb volleys; opens a portal before blinking across the arena, then pauses. At half health, adds warned root waves along the floor. | Fire (double damage); ice briefly stuns it. Stomps do no damage. Melee works. |
+| The Hollow Eye | Stage 4, end of Hollow Sanctum, guarding the chest | Phase 1: aimed orb volleys and lightning strikes. Phase 2: orb spreads, double strikes and ghost summons. Phase 3: dives to the floor, sends root spikes out, then sits dizzy. | Zap (double damage); ice stuns it. Stomp it from the two ledges. |
 
-Stomps do 2 damage, as does the warrior's heavy attack. Every boss is a pixelfx critter (frog, bat, slime, eyeball) drawn at about twice its size; their attacks use the ice-spikes, lightning-strike, spawn-portal, mana-burst, snowflake-burst, plasma-shot and plasma-explosion effects.
+Stomps do 2 damage, as does the warrior's heavy attack. Every boss is a pixelfx critter (frog, bat, slime, ghost, snake, bird, skull or eyeball) drawn at about twice its size; their attacks use the ice-spikes, lightning-strike, spawn-portal, mana-burst, snowflake-burst, plasma-shot and plasma-explosion effects.
 
 ## Project layout
 
@@ -105,3 +106,7 @@ python3 game/prep_art.py assets game/art.json
 - Haunted Grove backdrop: AI-generated original artwork in `game/art/grove-original.png`.
 
 - Warrior sprites: [Warrior-Free Animation Set](https://clembod.itch.io/warrior-free-animation-set) by Clembod. The license permits personal and commercial use and modifications, and prohibits redistribution or resale. See the included license and creator page.
+
+## Headless regression checks
+
+After building, run `node tests/stage4.cjs` with `@napi-rs/canvas` installed in your Node environment. The harness runs the built game with a headless Canvas2D adapter. It checks terrain traversal, Veilkeeper attacks and damage rules, checkpoint recovery, both boss exits, character attacks, and progression from Stage 3. Set `STAGE4_SHOTS` to a local directory to write visual samples. Real-controller playtesting is still needed to tune difficulty.

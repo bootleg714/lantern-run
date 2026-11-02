@@ -1,5 +1,17 @@
 # Lantern Run handoff
 
+## Stage 4 expansion — November 1, 2026
+
+This section supersedes the earlier single-section Stage 4 status below.
+
+- Stage 4 now follows the other stages' three-section structure: Haunted Grove (`grove1`), Wispwood Crossing (`grove2`), and Hollow Sanctum (`grove3`). All three use the existing Haunted Grove art, green torches, fog, palettes, and props. No new external assets or gameplay audio were added.
+- Preserved the original grove opening, then extended its platforming and ghost encounters. The middle section uses short plank crossings and leads to a new mid boss. The final section leads into the original Hollow Eye arena, moved to the third section; its three-phase fight, ledges, chest and stage-clear flow remain intact.
+- The Veilkeeper: 20 HP, a scaled mint-colored pixelfx ghost. Warned curse-orb volleys use a fixed aim, a destination portal telegraphs a blink for 0.8 seconds, and a 0.75-second recovery window prevents immediate arrival contact damage. At half health it adds root waves with a 0.65-second warning. Fire deals double, ice stuns briefly, stomps do no damage, and melee works. Defeat clears its enemy shots, awards 2,500 points and a heart, releases the arena, and leaves the final chest hidden.
+- Added checkpoints before both bosses, an intermediate grove checkpoint, and hearts/haste pickups along the route. Boss death resets and Stage 3 → Stage 4 progression use the existing systems. Stages 1–3 layouts and bosses are unchanged.
+- Updated the README and in-page boss guide. Rebuilt the self-contained `index.html` with `node game/build.mjs`.
+- `tests/stage4.cjs` is a headless engine regression harness using `@napi-rs/canvas`. It verifies ordinary movement/gravity/collision across the traversal sections, both Veilkeeper phases, damage and stun rules, real projectile/root damage, blink recovery safety, checkpoint respawn and boss reset, boss completion and chest gating, Biscuit/knight fire casts, warrior heavy attacks, and Stage 3 → Stage 4 progression. Terrain traversal tests disable combat, so they validate geometry rather than difficulty.
+- Visual samples reviewed for the grove, crossing, both bosses, and final approach. Browser/controller playtesting remains the next step: check enemy pressure, telegraph readability, checkpoint spacing, performance, and difficulty with each hero. The headless renderer is not a real-browser or hardware performance measurement.
+
 ## Recent changes
 
 - Replaced the Haunted Grove backdrop from Free Pixel Art Forest with original AI-generated artwork. The final revision uses a reduced palette and crisp pixel shapes to better match the other areas. The user reviewed it in-game and liked the result.
